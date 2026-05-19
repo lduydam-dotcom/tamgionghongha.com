@@ -177,6 +177,10 @@ tr:hover td{background:#fafafa;}
   .page-content{padding:8px 8px calc(var(--bottomnav-h) + 8px);}
 }
 </style>
+  <!-- Firebase SDK -->
+  <script type="module" src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -218,6 +222,7 @@ tr:hover td{background:#fafafa;}
       <span id="top-name">Admin</span>
       <span id="top-role" style="font-size:11px;background:rgba(255,255,255,0.18);padding:2px 8px;border-radius:10px;">Admin</span>
       <span id="save-indicator" style="font-size:11px;color:#a8f0d8;opacity:0;transition:opacity .3s;margin-right:4px;"></span>
+      <span id="sync-status" style="font-size:11px;color:#a8f0d8;opacity:0;transition:opacity .5s;margin-right:4px;"></span>
       <button id="btn-backup" class="logout-btn" onclick="goPage('backup',null)" style="background:rgba(255,255,255,0.15);display:none;"><i class="ti ti-database-export"></i> Backup</button>
       <button class="logout-btn" onclick="doLogout()"><i class="ti ti-logout"></i> Thoát</button>
     </div>
@@ -918,15 +923,31 @@ tr:hover td{background:#fafafa;}
 
 <script>
 // ============================================================
+// FIREBASE CONFIG & INIT
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyCmygpTNp7cnvq2Rvr-NqTACLOM6tPgXuM",
+  authDomain: "quanlybantamcon.firebaseapp.com",
+  databaseURL: "https://quanlybantamcon-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "quanlybantamcon",
+  storageBucket: "quanlybantamcon.firebasestorage.app",
+  messagingSenderId: "119109356049",
+  appId: "1:119109356049:web:5545b1e85fdcba1286ffb0"
+};
+firebase.initializeApp(firebaseConfig);
+const fbDB = firebase.database();
+const FB_PATH = 'honghha_tamworm'; // node gốc trên Firebase
+
+// ============================================================
 // DATA STORE
 // ============================================================
 const DB_KEY = 'hh_tamworm_db';
 
 const DB_DEFAULT = {
   users:[
-    {id:1,name:'LÊ DUY ĐẢM',phone:'0901 000 001',login:'admin',pass:'23082014',role:'Admin',sp:'Tất cả'},
-    {id:2,name:'THÁI THỊ LAN HOA',phone:'0902 000 002',login:'lan.ld',pass:'123456',role:'Nhân viên',sp:'Chi nhánh Chư Prông'},
-    {id:3,name:'TRẦN BÁ PHƯỚC ANH',phone:'0903 000 003',login:'khoa.ld',pass:'123456',role:'Nhân viên',sp:'Chi nhánh Lâm Đồng'},
+    {id:1,name:'Nguyễn Văn Admin',phone:'0901 000 001',login:'admin',pass:'admin123',role:'Admin',sp:'Tất cả'},
+    {id:2,name:'Phạm Thị Lan',phone:'0902 000 002',login:'lan.cp',pass:'123456',role:'Nhân viên',sp:'Chi nhánh Chư Prông'},
+    {id:3,name:'Vũ Minh Khoa',phone:'0903 000 003',login:'khoa.ld',pass:'123456',role:'Nhân viên',sp:'Chi nhánh Lâm Đồng'},
   ],
   salespoints:[
     {id:1,code:'ĐB-01',name:'Chi nhánh Chư Prông',user:'Phạm Thị Lan',addr:'Chư Prông, Gia Lai'},
@@ -966,7 +987,7 @@ function getCustFast(id){return _custMap[id]||{name:'?',code:'?',phone:'',cccd:'
 function getTxFast(cId,lc){return _txMap[cId+'_'+lc]||null;}
 function getOrdFast(cId,lc){return _ordMap[cId+'_'+lc]||null;}
 
-// Load từ localStorage nếu có, không thì dùng dữ liệu mặc định
+// Load từ localStorage trước (offline cache)
 function loadDB(){
   try {
     const saved = localStorage.getItem(DB_KEY);
@@ -975,26 +996,77 @@ function loadDB(){
       if(parsed && parsed.users && parsed.nextId) return parsed;
     }
   } catch(e){}
-  return JSON.parse(JSON.stringify(DB_DEFAULT)); // deep copy
+  return JSON.parse(JSON.stringify(DB_DEFAULT));
 }
 
 let DB = loadDB();
-if(!DB.debtNotes) DB.debtNotes = {}; // migrate cho file cũ chưa có field này
-buildIndexes(); // khởi tạo index sau khi load
+if(!DB.debtNotes) DB.debtNotes = {};
+buildIndexes();
 
-// Lưu DB vào localStorage sau mỗi thao tác ghi
+// ---- Firebase sync ----
+let _fbReady = false;
+let _fbSyncing = false;
+
+function showSyncStatus(msg, color){
+  let el = document.getElementById('sync-status');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.color = color || '#0a5c46';
+  el.style.opacity = '1';
+  if(color !== '#e74c3c') setTimeout(()=>{ el.style.opacity='0'; }, 3000);
+}
+
+// Lắng nghe thay đổi từ Firebase realtime
+function startFirebaseSync(){
+  showSyncStatus('⏳ Đang kết nối Firebase...', '#e67e22');
+  fbDB.ref(FB_PATH).on('value', snap => {
+    const data = snap.val();
+    if(data && data.users && data.nextId){
+      // Chỉ cập nhật nếu dữ liệu Firebase mới hơn (so sánh qua _fbVer)
+      if(!_fbReady || (data._fbVer || 0) > (DB._fbVer || 0)){
+        DB = data;
+        if(!DB.debtNotes) DB.debtNotes = {};
+        buildIndexes();
+        try { localStorage.setItem(DB_KEY, JSON.stringify(DB)); } catch(e){}
+        // Nếu đang ở trang nào thì re-render trang đó
+        if(_fbReady && currentPage && RENDERERS[currentPage]) RENDERERS[currentPage]();
+      }
+    }
+    if(!_fbReady){
+      _fbReady = true;
+      showSyncStatus('✓ Firebase đã kết nối', '#0a5c46');
+      // Nếu Firebase trống → đẩy dữ liệu localStorage lên
+      if(!data || !data.users){
+        saveToDB_Firebase();
+      }
+    }
+  }, err => {
+    showSyncStatus('⚠ Không kết nối được Firebase – dùng dữ liệu local', '#e74c3c');
+  });
+}
+
+// Đẩy DB lên Firebase
+function saveToDB_Firebase(){
+  if(_fbSyncing) return;
+  _fbSyncing = true;
+  DB._fbVer = Date.now(); // timestamp làm version
+  fbDB.ref(FB_PATH).set(DB)
+    .then(()=>{ _fbSyncing = false; showSyncStatus('✓ Đã lưu lên Firebase', '#0a5c46'); })
+    .catch(e=>{ _fbSyncing = false; showSyncStatus('⚠ Lỗi lưu Firebase: '+e.message, '#e74c3c'); });
+}
+
+// Lưu DB vào localStorage + Firebase sau mỗi thao tác ghi
 let _saveTimer = null;
 function saveDB(){
-  buildIndexes(); // cập nhật index sau mỗi thay đổi dữ liệu
+  buildIndexes();
+  // Lưu localStorage ngay lập tức (offline cache)
+  try { localStorage.setItem(DB_KEY, JSON.stringify(DB)); } catch(e){}
+  showSaveIndicator();
+  // Debounce Firebase 800ms để gộp nhiều thay đổi liên tiếp
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(()=>{
-    try {
-      localStorage.setItem(DB_KEY, JSON.stringify(DB));
-      showSaveIndicator();
-    } catch(e){
-      console.warn('Không thể lưu localStorage:', e);
-    }
-  }, 300); // debounce 300ms
+    saveToDB_Firebase();
+  }, 800);
 }
 
 function showSaveIndicator(){
@@ -1143,6 +1215,8 @@ function doLogin(){
   // show "Xem tất cả" lô tằm only for admin
   document.getElementById('btn-xem-tatca').style.display=(found.role==='Admin'||found.role==='Quản Lý')?'':'none';
   initFilters();
+  // Bắt đầu đồng bộ Firebase sau khi đăng nhập
+  startFirebaseSync();
   goPage('dashboard',document.querySelector('.nav-item'));
 }
 document.getElementById('inp-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
