@@ -409,6 +409,17 @@ tr:hover td{background:#fafafa;}
                 <div id="debt-lot-checks"></div>
               </div>
             </div>
+            <!-- Lọc trạng thái thanh toán -->
+            <div style="display:flex;border:2px solid #ddd;border-radius:8px;overflow:hidden;background:#fff;flex-shrink:0;">
+              <button id="debt-status-all"  onclick="setDebtStatus('all')"  class="debt-status-btn debt-status-active"
+                style="padding:8px 14px;border:none;background:#0a5c46;color:#fff;font-size:13px;cursor:pointer;font-weight:600;">Tất cả</button>
+              <button id="debt-status-debt" onclick="setDebtStatus('debt')" class="debt-status-btn"
+                style="padding:8px 14px;border:none;background:#fff;color:#555;font-size:13px;cursor:pointer;border-left:2px solid #ddd;border-right:2px solid #ddd;">
+                <i class="ti ti-alert-circle" style="font-size:12px;"></i> Còn nợ</button>
+              <button id="debt-status-paid" onclick="setDebtStatus('paid')" class="debt-status-btn"
+                style="padding:8px 14px;border:none;background:#fff;color:#555;font-size:13px;cursor:pointer;">
+                <i class="ti ti-circle-check" style="font-size:12px;"></i> Đã thanh toán</button>
+            </div>
             <div style="position:relative;flex:1;min-width:180px;">
               <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#999;"></i>
               <input id="debt-search" type="text" placeholder="Tìm tên / SĐT khách hàng..." oninput="renderDebts()"
@@ -3110,6 +3121,26 @@ function renderBkHistory(){
 }
 
 
+// ---- Lọc trạng thái công nợ ----
+let _debtStatusFilter = 'all'; // 'all' | 'debt' | 'paid'
+
+function setDebtStatus(val){
+  _debtStatusFilter = val;
+  // Cập nhật style button
+  ['all','debt','paid'].forEach(k => {
+    const btn = document.getElementById('debt-status-'+k);
+    if(!btn) return;
+    if(k === val){
+      btn.style.background = k==='paid' ? '#0a5c46' : k==='debt' ? '#c0392b' : '#0a5c46';
+      btn.style.color = '#fff';
+    } else {
+      btn.style.background = '#fff';
+      btn.style.color = '#555';
+    }
+  });
+  renderDebts();
+}
+
 // ---- Multi-select lô tằm ----
 function toggleLotDropdown(e){
   e.stopPropagation();
@@ -3221,7 +3252,26 @@ function buildDebtList(){
     custDebtMap[o.custId].lots.push({ o, amt, manualPaid, tienKen, kenPaidActual, paid, debt });
   });
 
+  // Thêm khách đã thanh toán đủ (debt=0) nếu cần cho filter 'paid' / 'all'
+  if(_debtStatusFilter !== 'debt'){
+    // Lấy tất cả custId có đơn hàng trong vùng lọc
+    activeOrders.forEach(o => {
+      if(custDebtMap[o.custId]) return; // đã có (khách còn nợ)
+      const { debt, amt, manualPaid, tienKen, kenPaidActual, paid } = calcOrderDebtAmt(o);
+      if(debt > 0) return; // đã được xử lý ở trên
+      if(!custDebtMap[o.custId]){
+        const c = getCustFast(o.custId);
+        custDebtMap[o.custId] = { custId:o.custId, custName:c.name, custPhone:c.phone, custCode:c.code, sp:o.sp, totalDebt:0, lots:[] };
+      }
+      custDebtMap[o.custId].lots.push({ o, amt, manualPaid, tienKen, kenPaidActual, paid, debt:0 });
+    });
+  }
+
   let list = Object.values(custDebtMap);
+
+  // Lọc theo trạng thái
+  if(_debtStatusFilter === 'debt') list = list.filter(r => r.totalDebt > 0);
+  else if(_debtStatusFilter === 'paid') list = list.filter(r => r.totalDebt <= 0);
 
   // Lọc theo search
   if(searchQ){
@@ -3273,10 +3323,14 @@ function renderDebts(){
   const totalCusts  = list.length;
   const allOrders   = DB.orders.filter(o=>o.status!=='Khách hủy');
   const totalOrders = allOrders.length;
+  // Tính riêng số nợ/đã trả để stat luôn đúng bất kể filter
+  const debtCount = list.filter(r=>r.totalDebt>0).length;
+  const paidCount = list.filter(r=>r.totalDebt<=0).length;
+  const debtTotal = list.filter(r=>r.totalDebt>0).reduce((s,r)=>s+r.totalDebt,0);
   document.getElementById('debt-stats').innerHTML = `
-    <div class="stat-box red"><div class="lbl">Tổng công nợ</div><div class="val" style="font-size:18px;">${fmtMoney(totalDebt)} đ</div><div class="sub">Tất cả khách còn nợ</div></div>
-    <div class="stat-box amber"><div class="lbl">Số khách còn nợ</div><div class="val">${totalCusts}</div><div class="sub">/ ${DB.customers.length} khách hàng</div></div>
-    <div class="stat-box green"><div class="lbl">Số khách đã đủ</div><div class="val">${DB.customers.length - totalCusts}</div><div class="sub">Thanh toán đầy đủ</div></div>
+    <div class="stat-box red"><div class="lbl">Tổng công nợ</div><div class="val" style="font-size:18px;">${fmtMoney(debtTotal)} đ</div><div class="sub">${debtCount} khách còn nợ</div></div>
+    <div class="stat-box amber"><div class="lbl">Số khách còn nợ</div><div class="val">${debtCount}</div><div class="sub">/ ${list.length} khách có đơn</div></div>
+    <div class="stat-box green"><div class="lbl">Số khách đã đủ</div><div class="val">${paidCount}</div><div class="sub">Thanh toán đầy đủ</div></div>
   `;
 
   // Bảng
@@ -3289,13 +3343,17 @@ function renderDebts(){
 
   const rows = list.map((r,i) => {
     const note = (DB.debtNotes || {})[r.custId] || '';
-    return `<tr ondblclick="openDebtDetail(${r.custId})" style="cursor:pointer;" title="Nhấp đúp để xem chi tiết">
+    const isPaid = r.totalDebt <= 0;
+    const debtColor = isPaid ? '#0a5c46' : '#c0392b';
+    const debtText  = isPaid ? '✓ Đã thanh toán' : fmtMoney(r.totalDebt) + ' đ';
+    const lotBadge  = isPaid ? `<span class="badge b-green">${r.lots.length} lô</span>` : `<span class="badge b-amber">${r.lots.length} lô</span>`;
+    return `<tr ondblclick="openDebtDetail(${r.custId})" style="cursor:pointer;${isPaid?'opacity:.85;':''}" title="Nhấp đúp để xem chi tiết">
       <td>${i+1}</td>
       <td style="color:#555;font-size:12px;">${r.sp}</td>
       <td style="font-weight:700;">${r.custName}<br><span style="font-size:11px;color:#888;font-weight:400;">${r.custCode}</span></td>
       <td>${r.custPhone}</td>
-      <td style="text-align:center;"><span class="badge b-amber">${r.lots.length} lô</span></td>
-      <td style="font-weight:700;color:#c0392b;font-size:14px;">${fmtMoney(r.totalDebt)} đ</td>
+      <td style="text-align:center;">${lotBadge}</td>
+      <td style="font-weight:700;color:${debtColor};font-size:14px;">${debtText}</td>
       <td style="font-size:12px;color:#666;font-style:italic;">${note || '<span style="color:#ccc;">—</span>'}</td>
     </tr>`;
   }).join('');
