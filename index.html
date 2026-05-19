@@ -176,6 +176,8 @@ tr:hover td{background:#fafafa;}
   .stat-box .val{font-size:18px;}
   .page-content{padding:8px 8px calc(var(--bottomnav-h) + 8px);}
 }
+
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
   <!-- Firebase SDK -->
   <script type="module" src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
@@ -194,6 +196,13 @@ tr:hover td{background:#fafafa;}
         <div class="login-logo-sub">Hệ thống quản lý bán tằm</div>
       </div>
     </div>
+    <!-- Loading Firebase overlay -->
+    <div id="fb-loading" style="text-align:center;padding:18px 0 10px;display:block;">
+      <div style="display:inline-block;width:28px;height:28px;border:3px solid #ddd;border-top-color:#0a5c46;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:10px;"></div>
+      <div style="font-size:13px;color:#777;" id="fb-loading-msg">⏳ Đang tải dữ liệu từ máy chủ...</div>
+    </div>
+    <!-- Form login - ẩn cho đến khi Firebase load xong -->
+    <div id="login-form-wrap" style="display:none;">
     <h2><i class="ti ti-login"></i> Đăng nhập</h2>
     <div class="login-field">
       <label>Tên đăng nhập</label>
@@ -205,6 +214,7 @@ tr:hover td{background:#fafafa;}
     </div>
     <button class="login-btn" onclick="doLogin()"><i class="ti ti-login"></i> Đăng nhập</button>
     <div class="login-err" id="login-err">Sai tên đăng nhập hoặc mật khẩu!</div>
+    </div><!-- /login-form-wrap -->
 
   </div>
 </div>
@@ -1003,6 +1013,9 @@ let DB = loadDB();
 if(!DB.debtNotes) DB.debtNotes = {};
 buildIndexes();
 
+// Khởi động Firebase sync ngay khi trang load → hiện form login sau khi có dữ liệu
+startFirebaseSync(false);
+
 // ---- Firebase sync ----
 let _fbReady = false;
 let _fbSyncing = false;
@@ -1017,31 +1030,70 @@ function showSyncStatus(msg, color){
 }
 
 // Lắng nghe thay đổi từ Firebase realtime
-function startFirebaseSync(){
+function showLoginForm(msg){
+  // Ẩn loading, hiện form đăng nhập
+  const loading = document.getElementById('fb-loading');
+  const form    = document.getElementById('login-form-wrap');
+  if(loading) loading.style.display = 'none';
+  if(form)    form.style.display    = 'block';
+  if(msg){
+    const msgEl = document.getElementById('fb-loading-msg');
+    if(msgEl){ msgEl.textContent = msg; msgEl.style.color='#e67e22'; loading.style.display='block'; }
+  }
+}
+
+function startFirebaseSync(calledFromLogin){
+  // Nếu gọi từ màn hình login → hiện loading, ẩn form
+  if(!calledFromLogin){
+    const loading = document.getElementById('fb-loading');
+    const form    = document.getElementById('login-form-wrap');
+    if(loading) loading.style.display = 'block';
+    if(form)    form.style.display    = 'none';
+  }
   showSyncStatus('⏳ Đang kết nối Firebase...', '#e67e22');
+
+  // Timeout 8 giây: nếu Firebase không phản hồi, vẫn cho đăng nhập (offline mode)
+  const fbTimeout = setTimeout(()=>{
+    if(!_fbReady){
+      _fbReady = true;
+      showLoginForm('⚠ Không kết nối được máy chủ – dùng dữ liệu cục bộ');
+      setTimeout(()=>showLoginForm(), 2500);
+    }
+  }, 8000);
+
   fbDB.ref(FB_PATH).on('value', snap => {
     const data = snap.val();
     if(data && data.users && data.nextId){
-      // Chỉ cập nhật nếu dữ liệu Firebase mới hơn (so sánh qua _fbVer)
       if(!_fbReady || (data._fbVer || 0) > (DB._fbVer || 0)){
         DB = data;
         if(!DB.debtNotes) DB.debtNotes = {};
         buildIndexes();
         try { localStorage.setItem(DB_KEY, JSON.stringify(DB)); } catch(e){}
-        // Nếu đang ở trang nào thì re-render trang đó
-        if(_fbReady && currentPage && RENDERERS[currentPage]) RENDERERS[currentPage]();
+        // Nếu đã đăng nhập → re-render trang hiện tại
+        if(_fbReady && currentUser && currentPage && RENDERERS[currentPage]) RENDERERS[currentPage]();
       }
     }
     if(!_fbReady){
+      clearTimeout(fbTimeout);
       _fbReady = true;
       showSyncStatus('✓ Firebase đã kết nối', '#0a5c46');
-      // Nếu Firebase trống → đẩy dữ liệu localStorage lên
       if(!data || !data.users){
+        // Firebase trống → đẩy dữ liệu local lên
         saveToDB_Firebase();
+      }
+      if(!calledFromLogin){
+        // Hiện form đăng nhập sau khi load xong
+        showLoginForm();
       }
     }
   }, err => {
-    showSyncStatus('⚠ Không kết nối được Firebase – dùng dữ liệu local', '#e74c3c');
+    clearTimeout(fbTimeout);
+    if(!_fbReady){
+      _fbReady = true;
+      showLoginForm('⚠ Không kết nối được máy chủ – dùng dữ liệu cục bộ');
+      setTimeout(()=>showLoginForm(), 2500);
+    }
+    showSyncStatus('⚠ Mất kết nối Firebase', '#e74c3c');
   });
 }
 
@@ -1215,8 +1267,7 @@ function doLogin(){
   // show "Xem tất cả" lô tằm only for admin
   document.getElementById('btn-xem-tatca').style.display=(found.role==='Admin'||found.role==='Quản Lý')?'':'none';
   initFilters();
-  // Bắt đầu đồng bộ Firebase sau khi đăng nhập
-  startFirebaseSync();
+  // Firebase đã kết nối từ trước, không cần gọi lại
   goPage('dashboard',document.querySelector('.nav-item'));
 }
 document.getElementById('inp-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
