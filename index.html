@@ -1620,8 +1620,8 @@ function saveCust(){
   if(!name||!phone||!cccd){showToast('Vui lòng điền Tên, SĐT và CCCD!','warn');return;}
   if(!sp){showToast('Vui lòng chọn Điểm bán!','warn');return;}
   if(!/^[0-9]{9,12}$/.test(cccd)){showToast('Số CCCD phải là 9–12 chữ số!','warn');return;}
-  // Kiểm tra trùng SĐT
-  const dupPhone=DB.customers.find(c=>c.phone===phone);
+  // Kiểm tra trùng SĐT (normalize: bỏ khoảng trắng/gạch ngang)
+  const dupPhone=DB.customers.find(c=>c.phone.replace(/[\s\-.]/g,'')===phone.replace(/[\s\-.]/g,''));
   if(dupPhone){showToast(`Số điện thoại <b>${phone}</b> đã được đăng ký cho khách <b>${dupPhone.name}</b> (${dupPhone.code})!`,'error');return;}
   // Kiểm tra trùng CCCD
   const dupCccd=DB.customers.find(c=>c.cccd===cccd);
@@ -1678,8 +1678,10 @@ function saveEditCust(){
   const note=document.getElementById('ec-note').value.trim();
   if(!name||!phone||!cccd){showToast('Vui lòng điền Tên, SĐT và CCCD!','warn');return;}
   if(!/^[0-9]{9,12}$/.test(cccd)){showToast('Số CCCD phải là 9–12 chữ số!','warn');return;}
+  // Normalize SĐT: bỏ khoảng trắng, dấu gạch ngang trước khi so sánh
+  const phoneNorm = phone.replace(/[\s\-\.]/g,'');
   // Kiểm tra trùng SĐT (loại trừ chính KH đang sửa)
-  const dupPhoneE=DB.customers.find(x=>x.phone===phone&&x.id!==id);
+  const dupPhoneE=DB.customers.find(x=>x.phone.replace(/[\s\-\.]/g,'')===phoneNorm&&x.id!==id);
   if(dupPhoneE){showToast(`Số điện thoại <b>${phone}</b> đã được đăng ký cho khách <b>${dupPhoneE.name}</b> (${dupPhoneE.code})!`,'error');return;}
   // Kiểm tra trùng CCCD (loại trừ chính KH đang sửa)
   const dupCccdE=DB.customers.find(x=>x.cccd===cccd&&x.id!==id);
