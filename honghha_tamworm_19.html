@@ -1,0 +1,3354 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Kén tằm Hồng Hà – Quản lý bán tằm</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;-webkit-tap-highlight-color:transparent;}
+:root{
+  --green:#0F6E56;--green-d:#085041;--green-l:#c8ede2;--green-ll:#e8f7f2;
+  --red:#c0392b;--red-l:#fbd0d0;--amber:#b8620a;--amber-l:#fde8b5;
+  --blue:#185FA5;--blue-l:#cce3f8;--gray:#555;--border:#b0b0b0;--bg:#f0f0f0;
+  --topbar-h:52px;--bottomnav-h:60px;
+}
+
+/* ===== LOGIN ===== */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#0a5c46 0%,#1D9E75 100%);padding:16px;}
+.login-box{background:#fff;border-radius:16px;padding:28px 24px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.18);}
+.login-logo{display:flex;align-items:center;gap:12px;margin-bottom:24px;}
+.login-logo-icon{width:48px;height:48px;border-radius:12px;background:var(--green);display:flex;align-items:center;justify-content:center;color:#fff;font-size:26px;flex-shrink:0;}
+.login-logo-text{font-size:16px;font-weight:700;color:#111;line-height:1.3;}
+.login-logo-sub{font-size:12px;color:#777;margin-top:2px;}
+.login-box h2{font-size:17px;font-weight:700;color:#111;margin-bottom:18px;border-bottom:2px solid #eee;padding-bottom:12px;}
+.login-field{margin-bottom:14px;}
+.login-field label{display:block;font-size:12px;font-weight:600;color:#444;margin-bottom:6px;}
+.login-field input{width:100%;padding:12px 13px;border:2px solid var(--border);border-radius:8px;font-size:15px;color:#222;background:#fff;outline:none;}
+.login-field input:focus{border-color:var(--green);}
+.login-btn{width:100%;padding:13px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;margin-top:4px;letter-spacing:.02em;}
+.login-btn:active{background:var(--green-d);}
+.login-err{color:var(--red);font-size:12px;margin-top:8px;display:none;}
+
+/* ===== APP SHELL ===== */
+#app{display:none;height:100vh;flex-direction:column;overflow:hidden;}
+
+/* TOPBAR */
+.topbar{background:var(--green);color:#fff;padding:0 14px;height:var(--topbar-h);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:2px solid var(--green-d);gap:8px;}
+.topbar-left{display:flex;align-items:center;gap:8px;flex:1;min-width:0;}
+/* hamburger button - mobile only */
+.menu-btn{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:4px;display:none;flex-shrink:0;}
+.topbar-brand{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.topbar-user{display:flex;align-items:center;gap:6px;font-size:12px;flex-shrink:0;}
+.topbar-avatar{width:30px;height:30px;border-radius:50%;background:#fff;color:var(--green);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.logout-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;white-space:nowrap;}
+.logout-btn:active{background:rgba(255,255,255,0.3);}
+#save-indicator{font-size:11px;color:#a8f0d8;opacity:0;transition:opacity .3s;white-space:nowrap;}
+#top-role{font-size:11px;background:rgba(255,255,255,0.18);padding:2px 7px;border-radius:10px;white-space:nowrap;}
+#btn-backup{display:none;}
+
+/* BODY WRAP */
+.body-wrap{display:flex;flex:1;overflow:hidden;position:relative;}
+
+/* SIDEBAR - desktop */
+.sidebar{width:220px;flex-shrink:0;background:#fff;border-right:2px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;transition:transform .25s ease;z-index:200;}
+.nav-section{padding:10px 0;}
+.nav-lbl{font-size:10px;color:#999;padding:4px 14px 5px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;font-size:13px;color:#444;border-left:3px solid transparent;transition:all .13s;}
+.nav-item:hover{background:#f5f5f5;color:#111;}
+.nav-item.active{color:var(--green);background:var(--green-ll);border-left-color:var(--green);font-weight:600;}
+.nav-item i{font-size:18px;}
+.sidebar-role{padding:10px 14px;border-top:2px solid var(--border);font-size:11px;color:#777;flex-shrink:0;}
+.sidebar-role span{display:block;font-size:12px;font-weight:700;color:var(--green);margin-top:2px;}
+
+/* Sidebar overlay backdrop (mobile) */
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:199;}
+.sidebar-backdrop.show{display:block;}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);}
+.page-header{padding:10px 16px;background:#fff;border-bottom:2px solid var(--border);font-size:15px;font-weight:700;color:#111;flex-shrink:0;}
+.page-content{flex:1;overflow-y:auto;padding:14px 14px;-webkit-overflow-scrolling:touch;}
+
+/* BOTTOM NAV - mobile only */
+.bottomnav{display:none;position:fixed;bottom:0;left:0;right:0;height:var(--bottomnav-h);background:#fff;border-top:2px solid var(--border);z-index:300;flex-direction:row;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.bn-item{flex:1;min-width:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px;cursor:pointer;border:none;background:none;color:#777;font-size:9px;font-weight:600;transition:color .13s;-webkit-tap-highlight-color:transparent;}
+.bn-item i{font-size:20px;}
+.bn-item.active{color:var(--green);}
+.bn-item span{font-size:9px;text-align:center;line-height:1.2;}
+
+/* ===== CARDS ===== */
+.card{background:#fff;border:2px solid var(--border);border-radius:10px;margin-bottom:14px;overflow:hidden;}
+.card-pad{padding:14px 16px;}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.stat-box{background:#fff;border:2px solid var(--border);border-radius:8px;padding:12px 14px;}
+.stat-box .lbl{font-size:11px;color:#666;margin-bottom:4px;}
+.stat-box .val{font-size:22px;font-weight:700;color:#111;}
+.stat-box .sub{font-size:11px;color:#999;margin-top:2px;}
+.stat-box.green .val{color:var(--green);}
+.stat-box.amber .val{color:var(--amber);}
+.stat-box.red .val{color:var(--red);}
+
+/* ===== TABLES ===== */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{background:#f0f0f0;font-size:11px;font-weight:700;color:#333;text-align:left;padding:9px 10px;border-bottom:2px solid #999;white-space:nowrap;}
+td{padding:9px 10px;border-bottom:1.5px solid #d8d8d8;color:#222;vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#fafafa;}
+
+/* ===== BADGE ===== */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:700;border:1.5px solid transparent;white-space:nowrap;}
+.b-green{background:#c2eadb;color:#0a5c46;border-color:#7dccb0;}
+.b-amber{background:var(--amber-l);color:var(--amber);border-color:#f0b840;}
+.b-red{background:var(--red-l);color:var(--red);border-color:#e88080;}
+.b-gray{background:#e4e4e4;color:#444;border-color:#b0b0b0;}
+.b-blue{background:var(--blue-l);color:var(--blue);border-color:#80b8e8;}
+
+/* ===== BUTTONS ===== */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:9px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #999;background:#fff;color:#222;transition:all .13s;touch-action:manipulation;}
+.btn:active{background:#f0f0f0;}
+.btn-primary{background:var(--green);color:#fff;border-color:var(--green-d);}
+.btn-primary:active{background:var(--green-d);}
+.btn-sm{padding:5px 9px;font-size:11px;}
+.btn i{font-size:14px;}
+
+/* ===== TOOLBAR ===== */
+.toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
+.toolbar select,.toolbar input{font-size:13px;padding:8px 10px;border:2px solid #999;border-radius:7px;background:#fff;color:#222;font-weight:500;}
+.toolbar input[type=text]{min-width:180px;}
+
+/* ===== PROGRESS ===== */
+.prog-bar{height:8px;background:#d8d8d8;border-radius:4px;overflow:hidden;border:1px solid #bbb;margin-top:3px;}
+.prog-fill{height:100%;border-radius:4px;}
+
+/* ===== MODAL ===== */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.52);z-index:1000;align-items:center;justify-content:center;padding:16px;}
+.modal-bg.open{display:flex;}
+.modal{background:#fff;border:2px solid #999;border-radius:14px;padding:22px 20px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:2px solid #ddd;padding-bottom:12px;}
+.modal-title{font-size:15px;font-weight:700;color:#111;}
+.modal-close{cursor:pointer;color:#777;font-size:22px;line-height:1;padding:4px;}
+.modal-ftr{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;border-top:2px solid #e8e8e8;padding-top:14px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+.fg{display:flex;flex-direction:column;gap:4px;}
+.fg label{font-size:12px;font-weight:600;color:#444;}
+.fg input,.fg select,.fg textarea{font-size:14px;padding:10px 11px;border:2px solid #999;border-radius:7px;background:#fff;color:#222;outline:none;}
+.fg input:focus,.fg select:focus{border-color:var(--green);}
+.fg.full{grid-column:1/-1;}
+.fg .hint{font-size:11px;color:var(--green);font-weight:600;margin-top:2px;}
+
+/* ===== DASHBOARD ===== */
+.dash-section{font-size:13px;font-weight:700;color:#333;margin:0 0 10px;display:flex;align-items:center;justify-content:space-between;}
+
+/* ===== HINT TEXT ===== */
+.hint-text{font-size:11px;color:#999;margin-top:6px;padding:0 4px;}
+
+/* ===== MOBILE BREAKPOINT ===== */
+@media(max-width:768px){
+  .menu-btn{display:flex;}
+  .topbar-brand{display:none;}
+  #top-role{display:none;}
+  .topbar-user span:not(#save-indicator){display:none;}
+  .sidebar{position:fixed;top:var(--topbar-h);left:0;bottom:0;transform:translateX(-100%);width:260px;box-shadow:4px 0 20px rgba(0,0,0,0.15);}
+  .sidebar.open{transform:translateX(0);}
+  .main{padding-bottom:0;}
+  .page-content{padding:10px 10px calc(var(--bottomnav-h) + 10px);}
+  .bottomnav{display:flex;}
+  .stat-grid{grid-template-columns:1fr 1fr;}
+  .stat-box .val{font-size:20px;}
+  .form-grid{grid-template-columns:1fr;}
+  .fg.full{grid-column:1;}
+  .modal{padding:18px 16px;max-height:88vh;}
+  .modal-ftr{gap:10px;}
+  .modal-ftr .btn{flex:1;justify-content:center;padding:12px;}
+  .toolbar{gap:6px;}
+  .toolbar .btn{font-size:12px;padding:8px 11px;}
+  table{font-size:12px;}
+  th,td{padding:8px 7px;}
+  .btn-sm{padding:6px 10px;font-size:12px;}
+  .page-header{font-size:14px;padding:10px 14px;}
+}
+
+@media(max-width:400px){
+  .stat-grid{grid-template-columns:1fr 1fr;gap:7px;}
+  .stat-box{padding:10px 10px;}
+  .stat-box .val{font-size:18px;}
+  .page-content{padding:8px 8px calc(var(--bottomnav-h) + 8px);}
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================ LOGIN ============================================================ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon"><i class="ti ti-leaf"></i></div>
+      <div>
+        <div class="login-logo-text">Kén tằm Hồng Hà</div>
+        <div class="login-logo-sub">Hệ thống quản lý bán tằm</div>
+      </div>
+    </div>
+    <h2><i class="ti ti-login"></i> Đăng nhập</h2>
+    <div class="login-field">
+      <label>Tên đăng nhập</label>
+      <input id="inp-user" type="text" placeholder="Nhập tên đăng nhập" autocomplete="username"/>
+    </div>
+    <div class="login-field">
+      <label>Mật khẩu</label>
+      <input id="inp-pass" type="password" placeholder="Nhập mật khẩu" autocomplete="current-password"/>
+    </div>
+    <button class="login-btn" onclick="doLogin()"><i class="ti ti-login"></i> Đăng nhập</button>
+    <div class="login-err" id="login-err">Sai tên đăng nhập hoặc mật khẩu!</div>
+
+  </div>
+</div>
+
+<!-- ============================================================ APP ============================================================ -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="menu-btn" onclick="toggleSidebar()" aria-label="Menu"><i class="ti ti-menu-2"></i></button>
+      <div style="width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;"><i class="ti ti-leaf"></i></div>
+      <span class="topbar-brand">Kén tằm Hồng Hà</span>
+    </div>
+    <div class="topbar-user">
+      <div class="topbar-avatar" id="top-avatar">VA</div>
+      <span id="top-name">Admin</span>
+      <span id="top-role" style="font-size:11px;background:rgba(255,255,255,0.18);padding:2px 8px;border-radius:10px;">Admin</span>
+      <span id="save-indicator" style="font-size:11px;color:#a8f0d8;opacity:0;transition:opacity .3s;margin-right:4px;"></span>
+      <button id="btn-backup" class="logout-btn" onclick="goPage('backup',null)" style="background:rgba(255,255,255,0.15);display:none;"><i class="ti ti-database-export"></i> Backup</button>
+      <button class="logout-btn" onclick="doLogout()"><i class="ti ti-logout"></i> Thoát</button>
+    </div>
+  </div>
+  <div class="body-wrap">
+    <!-- Sidebar backdrop for mobile -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+    <div class="sidebar" id="sidebar">
+      <div class="nav-section">
+        <div class="nav-lbl">Tổng quan</div>
+        <div class="nav-item active" onclick="goPage('dashboard',this)"><i class="ti ti-home"></i> Trang chủ</div>
+      </div>
+      <div class="nav-section" id="nav-settings">
+        <div class="nav-lbl">Cài đặt</div>
+        <div class="nav-item" id="nav-users-item" onclick="goPage('users',this)"><i class="ti ti-users"></i> Quản lý user</div>
+        <div class="nav-item" onclick="goPage('salespoints',this)"><i class="ti ti-map-pin"></i> Điểm bán tằm</div>
+        <div class="nav-item" onclick="goPage('batches',this)"><i class="ti ti-package"></i> Lô tằm</div>
+        <div class="nav-item" id="nav-backup-item" onclick="goPage('backup',this)"><i class="ti ti-database-export"></i> Backup dữ liệu</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-lbl">Vận hành</div>
+        <div class="nav-item" onclick="goPage('customers',this)"><i class="ti ti-address-book"></i> Khách hàng</div>
+        <div class="nav-item" onclick="goPage('orders',this)"><i class="ti ti-clipboard-list"></i> Đặt tằm</div>
+        <div class="nav-item" onclick="goPage('transactions',this)"><i class="ti ti-coins"></i> Bán kén / Thu tiền</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-lbl">Phân tích</div>
+        <div class="nav-item" onclick="goPage('reports',this)"><i class="ti ti-chart-bar"></i> Báo cáo</div>
+        <div class="nav-item" onclick="goPage('debts',this)"><i class="ti ti-credit-card-off"></i> Quản lý công nợ</div>
+      </div>
+      <div class="sidebar-role">Đăng nhập: <span id="sb-role">Admin</span></div>
+    </div>
+
+    <div class="main">
+      <div class="page-header" id="page-header">Trang chủ</div>
+      <div class="page-content">
+
+        <!-- ===== DASHBOARD ===== -->
+        <div id="pg-dashboard" class="pg">
+          <div class="stat-grid" id="dash-stats"></div>
+          <div class="card">
+            <div class="card-pad" style="border-bottom:2px solid #ddd;">
+              <div class="dash-section">Tình trạng lô tằm <button class="btn btn-sm" id="btn-xem-tatca" onclick="goPage('batches',null)" style="display:none;"><i class="ti ti-arrow-right"></i> Xem tất cả</button></div>
+            </div>
+            <div class="tbl-wrap"><table id="dash-lots-tbl"></table></div>
+          </div>
+          <div class="card">
+            <div class="card-pad" style="border-bottom:2px solid #ddd;display:flex;align-items:center;justify-content:space-between;">
+              <div class="dash-section" style="margin:0;">Danh sách đặt tằm</div>
+              <select id="dash-lot-filter" style="font-size:12px;padding:5px 8px;border:2px solid #999;border-radius:6px;" onchange="renderDashOrders()">
+                <option value="">Tất cả lô</option>
+              </select>
+            </div>
+            <div class="tbl-wrap"><table id="dash-orders-tbl"></table></div>
+          </div>
+        </div>
+
+        <!-- ===== USERS ===== -->
+        <div id="pg-users" class="pg" style="display:none;">
+          <div class="toolbar">
+            <button class="btn btn-primary" onclick="openModal('modal-user')"><i class="ti ti-plus"></i> Thêm user</button>
+          </div>
+          <div class="card"><div class="tbl-wrap"><table id="users-tbl"></table></div></div>
+          <div class="hint-text"><i class="ti ti-info-circle"></i> Nhấp đúp chuột vào dòng để sửa thông tin user</div>
+        </div>
+
+        <!-- ===== SALESPOINTS ===== -->
+        <div id="pg-salespoints" class="pg" style="display:none;">
+          <div class="toolbar">
+            <button class="btn btn-primary" onclick="openModal('modal-sp')"><i class="ti ti-plus"></i> Thêm điểm bán</button>
+          </div>
+          <div class="card"><div class="tbl-wrap"><table id="sp-tbl"></table></div></div>
+          <div class="hint-text"><i class="ti ti-info-circle"></i> Nhấp đúp chuột vào dòng để sửa thông tin điểm bán</div>
+        </div>
+
+        <!-- ===== CUSTOMERS ===== -->
+        <div id="pg-customers" class="pg" style="display:none;">
+          <div class="toolbar">
+            <button class="btn btn-primary" onclick="openModal('modal-cust')"><i class="ti ti-plus"></i> Thêm khách hàng</button>
+            <input type="text" id="cust-search" placeholder="Tìm theo tên, SĐT, CCCD..." oninput="renderCustomers()"/>
+          </div>
+          <div class="card"><div class="tbl-wrap"><table id="cust-tbl"></table></div></div>
+          <div class="hint-text"><i class="ti ti-info-circle"></i> Nhấp đúp vào dòng để sửa thông tin khách hàng</div>
+        </div>
+
+        <!-- ===== BATCHES ===== -->
+        <div id="pg-batches" class="pg" style="display:none;">
+          <div class="toolbar">
+            <button class="btn btn-primary" onclick="openModal('modal-batch')"><i class="ti ti-plus"></i> Thêm lô tằm</button>
+            <select id="batch-status-filter" onchange="renderBatches()">
+              <option value="">Tất cả trạng thái</option>
+              <option value="Còn hàng">Còn hàng</option>
+              <option value="Sắp hết">Sắp hết</option>
+              <option value="Gần hết">Gần hết</option>
+            </select>
+          </div>
+          <div class="card"><div class="tbl-wrap"><table id="batch-tbl"></table></div></div>
+          <div class="hint-text"><i class="ti ti-info-circle"></i> Nhấp đúp vào dòng để sửa thông tin lô tằm</div>
+        </div>
+
+        <!-- ===== ORDERS ===== -->
+        <div id="pg-orders" class="pg" style="display:none;">
+          <div class="toolbar">
+            <button class="btn btn-primary" onclick="openModal('modal-order')"><i class="ti ti-plus"></i> Tạo đơn đặt tằm</button>
+            <input type="text" id="ord-cust-search" placeholder="🔍 Tìm tên / SĐT khách hàng..." oninput="renderOrders()" style="flex:1;min-width:180px;"/>
+            <select id="ord-lot-filter" onchange="renderOrders()"><option value="">Tất cả lô</option></select>
+            <select id="ord-sp-filter" onchange="renderOrders()"><option value="">Tất cả điểm bán</option></select>
+            <input type="date" id="ord-date-filter" onchange="renderOrders()"/>
+          </div>
+          <div class="card"><div class="tbl-wrap"><table id="ord-tbl"></table></div></div>
+          <div class="hint-text"><i class="ti ti-info-circle"></i> Nhấp đúp vào dòng để sửa thông tin hoặc đổi trạng thái đơn</div>
+        </div>
+
+        <!-- ===== TRANSACTIONS ===== -->
+        <div id="pg-transactions" class="pg" style="display:none;">
+          <div class="toolbar" style="flex-wrap:wrap;gap:8px;">
+            <button class="btn btn-primary" onclick="openTxModal()"><i class="ti ti-plus"></i> Nhập giao dịch bán kén</button>
+            <div style="position:relative;flex:1;min-width:180px;">
+              <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#999;"></i>
+              <input id="tx-search" type="text" placeholder="Tìm tên / SĐT khách hàng..." oninput="renderTx()"
+                style="width:100%;padding:9px 12px 9px 34px;border:2px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;"/>
+            </div>
+            <select id="tx-lot-filter" onchange="renderTx()"><option value="">Tất cả lô</option></select>
+            <select id="tx-sp-filter" onchange="renderTx()" style="display:none;"><option value="">Tất cả điểm bán</option></select>
+            <button class="btn" onclick="printTx()" title="In bảng bán kén" style="padding:9px 13px;"><i class="ti ti-printer"></i> In</button>
+            <button class="btn" onclick="exportTxExcel()" title="Xuất Excel" style="padding:9px 13px;border-color:#1d6f42;color:#1d6f42;"><i class="ti ti-file-spreadsheet"></i> Excel</button>
+          </div>
+          <div class="card"><div class="tbl-wrap"><table id="tx-tbl"></table></div></div>
+        </div>
+
+        <!-- ===== REPORTS ===== -->
+        <div id="pg-reports" class="pg" style="display:none;">
+          <div class="toolbar">
+            <input type="date" id="rpt-from"/>
+            <span style="font-size:13px;color:#444;font-weight:600;">đến</span>
+            <input type="date" id="rpt-to"/>
+            <select id="rpt-lot"><option value="">Tất cả lô</option></select>
+            <select id="rpt-sp"><option value="">Tất cả điểm bán</option></select>
+            <button class="btn btn-primary" onclick="renderReports()"><i class="ti ti-search"></i> Lọc</button>
+            <button class="btn" onclick="printReport()" title="In báo cáo" style="margin-left:auto;"><i class="ti ti-printer"></i> In</button>
+            <button class="btn" onclick="exportReportExcel()" title="Xuất Excel" style="border-color:#1D6F42;color:#1D6F42;"><i class="ti ti-table-export"></i> Excel</button>
+          </div>
+          <!-- Tab lọc -->
+          <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
+            <button id="rpt-tab-all"            class="btn btn-primary" onclick="setRptTab('all')"            style="font-size:12px;"><i class="ti ti-list"></i> Tất cả khách đặt tằm</button>
+            <button id="rpt-tab-sold"           class="btn"             onclick="setRptTab('sold')"           style="font-size:12px;"><i class="ti ti-check" style="color:#0a5c46;"></i> Đã bán kén</button>
+            <button id="rpt-tab-unsold"         class="btn"             onclick="setRptTab('unsold')"         style="font-size:12px;"><i class="ti ti-clock" style="color:#b8620a;"></i> Chưa bán kén</button>
+            <button id="rpt-tab-unsold-normal"  class="btn"             onclick="setRptTab('unsold-normal')"  style="font-size:12px;"><i class="ti ti-ban" style="color:#b8620a;"></i> — Không bán kén</button>
+            <button id="rpt-tab-unsold-poison"  class="btn"             onclick="setRptTab('unsold-poison')"  style="font-size:12px;"><i class="ti ti-skull" style="color:#8b1a1a;"></i> — Tằm ngộ độc</button>
+            <button id="rpt-tab-nangxuat"       class="btn"             onclick="setRptTab('nangxuat')"       style="font-size:12px;"><i class="ti ti-trophy" style="color:#185FA5;"></i> 🏆 Năng suất</button>
+          </div>
+          <div class="stat-grid" id="rpt-stats"></div>
+          <div class="card"><div class="tbl-wrap"><table id="rpt-tbl"></table></div></div>
+          <!-- Năng suất panel (bổ sung bên dưới bảng chính) -->
+          <div id="rpt-nangxuat-panel" style="display:none;margin-top:16px;"></div>
+        </div>
+
+        <!-- ===== DEBTS ===== -->
+        <div id="pg-debts" class="pg" style="display:none;">
+          <div class="toolbar" style="flex-wrap:wrap;gap:8px;">
+            <select id="debt-sp-filter" onchange="renderDebts()" style="min-width:160px;"><option value="">Tất cả điểm bán</option></select>
+            <!-- Multi-select lô tằm -->
+            <div id="debt-lot-dropdown" style="position:relative;min-width:180px;">
+              <button type="button" onclick="toggleLotDropdown(event)"
+                style="width:100%;padding:8px 12px;border:2px solid #ddd;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:6px;white-space:nowrap;">
+                <span id="debt-lot-label">Tất cả lô tằm</span>
+                <i class="ti ti-chevron-down" style="font-size:12px;color:#666;flex-shrink:0;"></i>
+              </button>
+              <div id="debt-lot-panel" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:999;background:#fff;border:2px solid #ddd;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:200px;max-height:260px;overflow-y:auto;padding:6px 0;">
+                <label style="display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eee;">
+                  <input type="checkbox" id="debt-lot-all" onchange="onLotAllChange(this)" checked style="accent-color:#0a5c46;width:15px;height:15px;">
+                  <span style="font-weight:600;color:#0a5c46;">Tất cả lô tằm</span>
+                </label>
+                <div id="debt-lot-checks"></div>
+              </div>
+            </div>
+            <div style="position:relative;flex:1;min-width:180px;">
+              <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#999;"></i>
+              <input id="debt-search" type="text" placeholder="Tìm tên / SĐT khách hàng..." oninput="renderDebts()"
+                style="width:100%;padding:9px 12px 9px 34px;border:2px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;"/>
+            </div>
+            <button class="btn" onclick="printDebts()" style="padding:9px 13px;"><i class="ti ti-printer"></i> In</button>
+            <button class="btn" onclick="exportDebtsExcel()" style="padding:9px 13px;border-color:#1d6f42;color:#1d6f42;"><i class="ti ti-file-spreadsheet"></i> Excel</button>
+          </div>
+          <!-- Stat boxes -->
+          <div class="stat-grid" id="debt-stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px;"></div>
+          <!-- Bảng nợ -->
+          <div class="card"><div class="tbl-wrap"><table id="debt-tbl"></table></div></div>
+          <div class="hint-text"><i class="ti ti-info-circle"></i> Nhấp đúp vào dòng để xem chi tiết công nợ từng lô tằm</div>
+        </div>
+
+        <!-- ===== BACKUP ===== -->
+        <div id="pg-backup" class="pg" style="display:none;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:860px;">
+
+            <!-- EXPORT -->
+            <div class="card card-pad">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;border-bottom:2px solid #e0e0e0;padding-bottom:12px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:#e8f7f2;display:flex;align-items:center;justify-content:center;"><i class="ti ti-database-export" style="font-size:20px;color:#0a5c46;"></i></div>
+                <div><div style="font-size:14px;font-weight:700;">Xuất backup</div><div style="font-size:11px;color:#777;">Tải toàn bộ dữ liệu về máy</div></div>
+              </div>
+              <p style="font-size:13px;color:#555;margin-bottom:14px;line-height:1.6;">Tạo file backup chứa toàn bộ dữ liệu hệ thống: user, điểm bán, lô tằm, khách hàng, đơn đặt và giao dịch bán kén. File sẽ được lưu dưới định dạng <b>.json</b>.</p>
+              <div style="background:#f5f5f5;border:1.5px solid #ddd;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#555;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>👥 Users</span><span id="bk-cnt-users" style="font-weight:700;"></span></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>📍 Điểm bán</span><span id="bk-cnt-sp" style="font-weight:700;"></span></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>📦 Lô tằm</span><span id="bk-cnt-batches" style="font-weight:700;"></span></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>👤 Khách hàng</span><span id="bk-cnt-custs" style="font-weight:700;"></span></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>📋 Đơn đặt tằm</span><span id="bk-cnt-orders" style="font-weight:700;"></span></div>
+                <div style="display:flex;justify-content:space-between;"><span>💰 Giao dịch bán kén</span><span id="bk-cnt-tx" style="font-weight:700;"></span></div>
+              </div>
+              <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px;" onclick="exportBackup()">
+                <i class="ti ti-download"></i> Tải xuống file backup (.json)
+              </button>
+              <button class="btn" style="width:100%;justify-content:center;padding:8px;margin-top:8px;border-color:#185FA5;color:#185FA5;" onclick="copyBackupToClipboard()">
+                <i class="ti ti-copy"></i> Sao chép JSON vào clipboard
+              </button>
+              <div id="bk-manual-area" style="display:none;margin-top:10px;">
+                <div style="font-size:11px;color:#777;margin-bottom:4px;">Hoặc sao chép thủ công nội dung bên dưới và lưu thành file .json:</div>
+                <textarea id="bk-json-text" readonly style="width:100%;height:120px;font-size:10px;font-family:monospace;border:1.5px solid #ddd;border-radius:6px;padding:6px;resize:vertical;color:#333;background:#f9f9f9;"></textarea>
+              </div>
+            </div>
+
+            <!-- IMPORT -->
+            <div class="card card-pad">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;border-bottom:2px solid #e0e0e0;padding-bottom:12px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:#fde8b5;display:flex;align-items:center;justify-content:center;"><i class="ti ti-database-import" style="font-size:20px;color:#7a4500;"></i></div>
+                <div><div style="font-size:14px;font-weight:700;">Khôi phục backup</div><div style="font-size:11px;color:#777;">Tải file backup lên để khôi phục</div></div>
+              </div>
+              <p style="font-size:13px;color:#555;margin-bottom:14px;line-height:1.6;">Chọn file backup <b>.json</b> đã xuất trước đó để khôi phục toàn bộ dữ liệu. <span style="color:#c0392b;font-weight:600;">⚠️ Thao tác này sẽ ghi đè toàn bộ dữ liệu hiện tại!</span></p>
+              <div id="bk-drop-zone" style="border:2px dashed #b0b0b0;border-radius:8px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .15s;margin-bottom:14px;background:#fafafa;"
+                onclick="document.getElementById('bk-file-input').click()"
+                ondragover="event.preventDefault();this.style.borderColor='#0a5c46';this.style.background='#e8f7f2';"
+                ondragleave="this.style.borderColor='#b0b0b0';this.style.background='#fafafa';"
+                ondrop="event.preventDefault();this.style.borderColor='#b0b0b0';this.style.background='#fafafa';handleBackupFile(event.dataTransfer.files[0]);">
+                <i class="ti ti-file-upload" style="font-size:32px;color:#aaa;display:block;margin-bottom:8px;"></i>
+                <div style="font-size:13px;color:#777;">Kéo thả file vào đây hoặc <span style="color:#0a5c46;font-weight:600;">nhấn để chọn file</span></div>
+                <div style="font-size:11px;color:#aaa;margin-top:4px;">Chỉ chấp nhận file .json backup từ hệ thống này</div>
+              </div>
+              <input type="file" id="bk-file-input" accept=".json" style="display:none;" onchange="handleBackupFile(this.files[0])"/>
+              <div id="bk-preview" style="display:none;background:#f5f5f5;border:1.5px solid #ddd;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#555;">
+                <div style="font-weight:700;margin-bottom:8px;color:#111;">📄 Thông tin file backup:</div>
+                <div id="bk-preview-content"></div>
+              </div>
+              <button id="bk-restore-btn" class="btn" style="width:100%;justify-content:center;padding:10px;border-color:#b8620a;color:#7a4500;display:none;" onclick="confirmRestore()">
+                <i class="ti ti-restore"></i> Khôi phục dữ liệu từ file này
+              </button>
+            </div>
+
+          </div>
+
+          <!-- History log -->
+          <div class="card card-pad" style="max-width:860px;margin-top:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="font-size:13px;font-weight:700;"><i class="ti ti-device-floppy"></i> Lưu tạm trên máy</div>
+              <div id="bk-storage-info" style="font-size:12px;color:#666;"></div>
+            </div>
+            <div style="background:#e8f7f2;border:1.5px solid #7dccb0;border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:13px;color:#0a5c46;line-height:1.6;">
+              <i class="ti ti-info-circle"></i> Dữ liệu được <b>tự động lưu vào bộ nhớ trình duyệt</b> (localStorage) sau mỗi thao tác. Khi mở lại file HTML trên cùng trình duyệt, dữ liệu sẽ được khôi phục tự động.
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn" style="border-color:#c0392b;color:#c0392b;" onclick="clearLocalData()">
+                <i class="ti ti-trash"></i> Xoá dữ liệu tạm (reset về mặc định)
+              </button>
+              <button class="btn" onclick="checkStorageSize()">
+                <i class="ti ti-chart-pie"></i> Kiểm tra dung lượng đã dùng
+              </button>
+            </div>
+          </div>
+          <div class="card card-pad" style="max-width:860px;margin-top:0;">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px;"><i class="ti ti-history"></i> Lịch sử backup</div>
+            <div id="bk-history" style="font-size:12px;color:#666;"></div>
+          </div>
+        </div>
+
+      </div><!-- page-content -->
+    </div><!-- main -->
+  </div><!-- body-wrap -->
+
+  <!-- BOTTOM NAV (mobile) -->
+  <nav class="bottomnav" id="bottomnav">
+    <button class="bn-item active" id="bn-dashboard" onclick="goPage('dashboard',null);setBottomNav('dashboard')"><i class="ti ti-home"></i><span>Trang chủ</span></button>
+    <button class="bn-item" id="bn-customers" onclick="goPage('customers',null);setBottomNav('customers')"><i class="ti ti-address-book"></i><span>Khách hàng</span></button>
+    <button class="bn-item" id="bn-orders" onclick="goPage('orders',null);setBottomNav('orders')"><i class="ti ti-clipboard-list"></i><span>Đặt tằm</span></button>
+    <button class="bn-item" id="bn-transactions" onclick="goPage('transactions',null);setBottomNav('transactions')"><i class="ti ti-coins"></i><span>Bán kén</span></button>
+    <button class="bn-item" id="bn-reports" onclick="goPage('reports',null);setBottomNav('reports')"><i class="ti ti-chart-bar"></i><span>Báo cáo</span></button>
+    <button class="bn-item" id="bn-debts" onclick="goPage('debts',null);setBottomNav('debts')"><i class="ti ti-credit-card-off"></i><span>Công nợ</span></button>
+    <button class="bn-item" id="bn-more" onclick="toggleSidebar()"><i class="ti ti-dots"></i><span>Thêm</span></button>
+  </nav>
+</div><!-- app -->
+
+<!-- ============================================================ MODALS ============================================================ -->
+
+<!-- USER -->
+<div class="modal-bg" id="modal-user">
+<div class="modal">
+  <div class="modal-hdr"><span class="modal-title"><i class="ti ti-user-plus"></i> Thêm user mới</span><span class="modal-close" onclick="closeModal('modal-user')"><i class="ti ti-x"></i></span></div>
+  <div class="form-grid">
+    <div class="fg full"><label>Họ và tên *</label><input id="u-name" type="text" placeholder="Nhập họ và tên"/></div>
+    <div class="fg"><label>Số điện thoại *</label><input id="u-phone" type="text" placeholder="09xx..."/></div>
+    <div class="fg"><label>Tên đăng nhập *</label><input id="u-login" type="text" placeholder="VD: lan.cp"/></div>
+    <div class="fg"><label>Mật khẩu *</label><input id="u-pass" type="password" placeholder="Ít nhất 6 ký tự"/></div>
+    <div class="fg"><label>Quyền hạn</label>
+      <select id="u-role" onchange="toggleSpField()">
+        <option value="Admin">Admin</option>
+        <option value="Quản Lý">Quản Lý</option>
+        <option value="Nhân viên">Nhân viên</option>
+      </select>
+    </div>
+    <div class="fg" id="u-sp-wrap"><label>Điểm bán phụ trách</label><select id="u-sp"></select></div>
+  </div>
+  <div class="modal-ftr">
+    <button class="btn" onclick="closeModal('modal-user')">Huỷ</button>
+    <button class="btn btn-primary" onclick="saveUser()"><i class="ti ti-check"></i> Lưu user</button>
+  </div>
+</div></div>
+
+<!-- SALESPOINT -->
+<div class="modal-bg" id="modal-sp">
+<div class="modal">
+  <div class="modal-hdr"><span class="modal-title"><i class="ti ti-map-pin"></i> Thêm điểm bán</span><span class="modal-close" onclick="closeModal('modal-sp')"><i class="ti ti-x"></i></span></div>
+  <div class="form-grid">
+    <div class="fg"><label>Tên điểm bán *</label><input id="sp-name" type="text" placeholder="VD: Chi nhánh Chư Prông"/></div>
+    <div class="fg"><label>User phụ trách</label><select id="sp-user"></select></div>
+    <div class="fg full"><label>Địa điểm *</label><input id="sp-addr" type="text" placeholder="Xã, huyện, tỉnh"/></div>
+  </div>
+  <div class="modal-ftr">
+    <button class="btn" onclick="closeModal('modal-sp')">Huỷ</button>
+    <button class="btn btn-primary" onclick="saveSP()"><i class="ti ti-check"></i> Lưu điểm bán</button>
+  </div>
+</div></div>
+
+<!-- EDIT CUSTOMER -->
+<div class="modal-bg" id="modal-edit-cust">
+<div class="modal">
+  <div class="modal-hdr"><span class="modal-title"><i class="ti ti-edit"></i> Sửa thông tin khách hàng</span><span class="modal-close" onclick="closeModal('modal-edit-cust')"><i class="ti ti-x"></i></span></div>
+  <input type="hidden" id="ec-id"/>
+  <div style="font-size:11px;color:#666;margin-bottom:12px;"><span id="ec-code-display" style="font-weight:700;color:#0a5c46;font-size:13px;"></span></div>
+  <div class="form-grid">
+    <div class="fg"><label>Họ và tên *</label><input id="ec-name" type="text"/></div>
+    <div class="fg"><label>Số điện thoại *</label><input id="ec-phone" type="text"/></div>
+    <div class="fg"><label>Số CCCD *</label><input id="ec-cccd" type="text"/></div>
+    <div class="fg"><label>Điểm bán *</label><select id="ec-sp"></select></div>
+    <div class="fg full"><label>Địa chỉ</label><input id="ec-addr" type="text"/></div>
+    <div class="fg full"><label>Ghi chú</label><input id="ec-note" type="text"/></div>
+  </div>
+  <div class="modal-ftr">
+    <button class="btn" onclick="closeModal('modal-edit-cust')">Huỷ</button>
+    <button class="btn btn-primary" onclick="saveEditCust()"><i class="ti ti-check"></i> Lưu thay đổi</button>
+  </div>
+</div></div>
+
+<!-- EDIT ORDER -->
+<div class="modal-bg" id="modal-edit-order">
+<div class="modal" style="width:580px;">
+  <div class="modal-hdr">
+    <span class="modal-title"><i class="ti ti-edit"></i> Sửa đơn đặt tằm</span>
+    <span class="modal-close" onclick="closeModal('modal-edit-order')"><i class="ti ti-x"></i></span>
+  </div>
+  <input type="hidden" id="eo-id"/>
+  <!-- Info readonly -->
+  <div style="background:#f5f5f5;border:1.5px solid #ddd;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+      <div><span style="color:#777;font-size:11px;">Khách hàng</span><div id="eo-cust-info" style="font-weight:700;"></div></div>
+      <div><span style="color:#777;font-size:11px;">Lô tằm</span><div id="eo-lot-info" style="font-weight:700;"></div></div>
+      <div><span style="color:#777;font-size:11px;">Điểm bán</span><div id="eo-sp-info" style="font-weight:700;"></div></div>
+      <div><span style="color:#777;font-size:11px;">Ngày giờ đặt</span><div id="eo-ts-info"></div></div>
+      <div><span style="color:#777;font-size:11px;">Thành tiền</span><div id="eo-amt-info" style="font-weight:700;color:#0a5c46;"></div></div>
+    </div>
+  </div>
+  <div class="form-grid">
+    <!-- Sửa số hộp -->
+    <div class="fg">
+      <label>Số hộp đặt *</label>
+      <input id="eo-boxes" type="number" min="0.01" step="0.01" oninput="calcEditOrderDebt()"/>
+    </div>
+    <div class="fg">
+      <label>Trạng thái *</label>
+      <select id="eo-status" onchange="toggleCancelFields()">
+        <option value="Chờ xác nhận">Chờ xác nhận</option>
+        <option value="Xác nhận">Xác nhận</option>
+        <option value="Khách hủy">Khách hủy</option>
+      </select>
+    </div>
+    <div class="fg" id="eo-cancel-wrap" style="display:none;">
+      <label>Thời gian hủy *</label>
+      <input id="eo-cancel-ts" type="datetime-local"/>
+    </div>
+    <!-- Thanh toán -->
+    <div class="fg full" style="border-top:1.5px dashed #ddd;padding-top:12px;">
+      <label>Phương thức thanh toán</label>
+      <div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;font-weight:500;">
+          <input type="radio" name="eo-payment" value="Tiền mặt" style="width:17px;height:17px;accent-color:var(--green);"/> 💵 Tiền mặt
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;font-weight:500;">
+          <input type="radio" name="eo-payment" value="Chuyển khoản" style="width:17px;height:17px;accent-color:var(--green);"/> 🏦 Chuyển khoản
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;font-weight:500;">
+          <input type="radio" name="eo-payment" value="Tiền mặt + CK" style="width:17px;height:17px;accent-color:var(--green);"/> 🔄 Kết hợp
+        </label>
+      </div>
+    </div>
+    <div class="fg"><label>Số tiền đã trả (đ)</label><input id="eo-paid" type="number" min="0" step="1000" placeholder="0" oninput="calcEditOrderDebt()"/></div>
+    <div class="fg"><label>Còn nợ</label><input id="eo-debt" type="text" readonly style="background:#f5f5f5;font-weight:700;"/></div>
+    <div class="fg full"><label>Ghi chú</label><input id="eo-note" type="text" placeholder="Ghi chú thêm"/></div>
+    <div class="fg full" id="eo-cancel-reason-wrap" style="display:none;">
+      <label>Lý do hủy</label>
+      <input id="eo-cancel-reason" type="text" placeholder="Nhập lý do khách hủy (nếu có)"/>
+    </div>
+    <div class="fg full" id="eo-unsold-reason-wrap" style="display:none;">
+      <label>Lý do chưa bán kén</label>
+      <select id="eo-unsold-reason">
+        <option value="">-- Chọn lý do --</option>
+        <option value="Không bán kén">Không bán kén</option>
+        <option value="Tằm ngộ độc">Tằm ngộ độc</option>
+      </select>
+    </div>
+  </div>
+  <div class="modal-ftr">
+    <button class="btn" onclick="closeModal('modal-edit-order')">Huỷ</button>
+    <button class="btn btn-primary" onclick="saveEditOrder()"><i class="ti ti-check"></i> Lưu thay đổi</button>
+  </div>
+</div></div>
+<div class="modal-bg" id="modal-edit-user">
+<div class="modal">
+  <div class="modal-hdr"><span class="modal-title"><i class="ti ti-edit"></i> Sửa thông tin user</span><span class="modal-close" onclick="closeModal('modal-edit-user')"><i class="ti ti-x"></i></span></div>
+  <input type="hidden" id="eu-id"/>
+  <div class="form-grid">
+    <div class="fg full"><label>Họ và tên *</label><input id="eu-name" type="text"/></div>
+    <div class="fg"><label>Số điện thoại *</label><input id="eu-phone" type="text"/></div>
+    <div class="fg"><label>Tên đăng nhập *</label><input id="eu-login" type="text"/></div>
+    <div class="fg"><label>Mật khẩu mới <span style="font-weight:400;color:#999;">(để trống = giữ cũ)</span></label><input id="eu-pass" type="password" placeholder="Để trống nếu không đổi"/></div>
+    <div class="fg"><label>Quyền hạn</label>
+      <select id="eu-role" onchange="toggleEditSpField()">
+        <option value="Admin">Admin</option>
+        <option value="Quản Lý">Quản Lý</option>
+        <option value="Nhân viên">Nhân viên</option>
+      </select>
+    </div>
+    <div class="fg" id="eu-sp-wrap"><label>Điểm bán phụ trách</label><select id="eu-sp"></select></div>
+  </div>
+  <div class="modal-ftr">
+    <button class="btn" onclick="closeModal('modal-edit-user')">Huỷ</button>
+    <button class="btn btn-primary" onclick="saveEditUser()"><i class="ti ti-check"></i> Lưu thay đổi</button>
+  </div>
+</div></div>
+
+<!-- EDIT SALESPOINT -->
+<div class="modal-bg" id="modal-edit-sp">
+<div class="modal">
+  <div class="modal-hdr"><span class="modal-title"><i class="ti ti-edit"></i> Sửa điểm bán</span><span class="modal-close" onclick="closeModal('modal-edit-sp')"><i class="ti ti-x"></i></span></div>
+  <input type="hidden" id="esp-id"/>
+  <div class="form-grid">
+    <div class="fg"><label>Tên điểm bán *</label><input id="esp-name" type="text"/></div>
+    <div class="fg"><label>User phụ trách</label><select id="esp-user"></select></div>
+    <div class="fg full"><label>Địa điểm *</label><input id="esp-addr" type="text"/></div>
+  </div>
+  <div class="modal-ftr">
+    <button class="btn" onclick="closeModal('modal-edit-sp')">Huỷ</button>
+    <button class="btn btn-primary" onclick="saveEditSP()"><i class="ti ti-check"></i> Lưu thay đổi</button>
+  </div>
+</div></div>
+
+<!-- CUSTOMER -->
+<div class="modal-bg" id="modal-cust">
+<div class="modal">
+  <div class="modal-hdr"><span class="modal-title"><i class="ti ti-user-plus"></i> Thêm khách hàng</span><span class="modal-close" onclick="closeModal('modal-cust')"><i class="ti ti-x"></i></span></div>
+  <div class="form-grid">
+    <div class="fg"><label>Họ và tên *</label><input id="c-name" type="text" placeholder="Nhập họ tên"/></div>
+    <div class="fg"><label>Số điện thoại *</label><input id="c-phone" type="text" placeholder="09xx..."/></div>
+    <div class="fg"><label>Số CCCD *</label><input id="c-cccd" type="text" placeholder="12 chữ số"/></div>
+    <div class="fg"><label>Điểm bán *</label><select id="c-sp"></select></div>
+    <div class="fg full"><label>Địa chỉ</label><input id="c-addr" type="text" placeholder="Xã, huyện, tỉnh"/></div>
+    <div class="fg full"><label>Ghi chú</label><input id="c-note" type="text" placeholder="Ghi chú thêm"/></div>
+  </div>
+  <div class="modal-ftr">
+    <button class="btn" onclick="closeModal('modal-cust')">Huỷ</button>
+    <button class="btn btn-primary" onclick="saveCust()"><i class="ti ti-check"></i> Lưu khách hàng</button>
+  </div>
+</div></div>
+
+<!-- BATCH -->
+<div class="modal-bg" id="modal-batch">
+<div class="modal">
+  <div class="modal-hdr"><span class="modal-title"><i class="ti ti-package"></i> Thêm lô tằm mới</span><span class="modal-close" onclick="closeModal('modal-batch')"><i class="ti ti-x"></i></span></div>
+  <div class="form-grid">
+    <div class="fg"><label>Lô tằm số *</label><input id="b-code" type="text" placeholder="VD: LT-2025-05"/></div>
+    <div class="fg"><label>Số lượng bìa trứng *</label><input id="b-eggs" type="number" min="1" placeholder="Số bìa" oninput="calcBoxes()"/></div>
+    <div class="fg"><label>Tỉ lệ dồn <span style="font-weight:400;color:#888;font-size:11px;">(VD: 0.75 → Hộp = Bìa × 4 × 0.75)</span></label><input id="b-rate" type="number" value="0.75" min="0.01" max="99" step="0.01" oninput="calcBoxes()"/></div>
+    <div class="fg"><label>Hộp dự kiến</label><input id="b-boxes" type="number" step="0.01" placeholder="Tự động tính" readonly style="background:#f5f5f5;"/></div>
+    <div class="fg"><label>Ngày nhập trứng *</label><input id="b-in" type="date"/></div>
+    <div class="fg"><label>Ngày xuất tằm *</label><input id="b-out" type="date"/></div>
+  </div>
+  <div class="modal-ftr">
+    <button class="btn" onclick="closeModal('modal-batch')">Huỷ</button>
+    <button class="btn btn-primary" onclick="saveBatch()"><i class="ti ti-check"></i> Lưu lô tằm</button>
+  </div>
+</div></div>
+
+<!-- EDIT BATCH -->
+<div class="modal-bg" id="modal-edit-batch">
+<div class="modal" style="width:580px;">
+  <div class="modal-hdr">
+    <span class="modal-title"><i class="ti ti-edit"></i> Sửa thông tin lô tằm</span>
+    <span class="modal-close" onclick="closeModal('modal-edit-batch')"><i class="ti ti-x"></i></span>
+  </div>
+  <input type="hidden" id="eb-orig-code"/>
+  <!-- Thông tin đặt đơn (readonly) -->
+  <div id="eb-order-info" style="display:none;background:#fde8b5;border:1.5px solid #f0b840;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#7a4500;">
+    <i class="ti ti-alert-triangle"></i> <span id="eb-order-info-text"></span>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Lô tằm số *</label><input id="eb-code" type="text"/></div>
+    <div class="fg"><label>Số lượng bìa trứng *</label><input id="eb-eggs" type="number" min="1" oninput="calcEditBoxes()"/></div>
+    <div class="fg"><label>Tỉ lệ dồn <span style="font-weight:400;color:#888;font-size:11px;">(Hộp = Bìa × 4 × Tỉ lệ)</span></label>
+      <input id="eb-rate" type="number" min="0.01" max="99" step="0.01" oninput="calcEditBoxes()"/>
+    </div>
+    <div class="fg"><label>Hộp dự kiến</label>
+      <input id="eb-boxes" type="number" step="0.01" readonly style="background:#f5f5f5;"/>
+    </div>
+    <div class="fg"><label>Ngày nhập trứng *</label><input id="eb-in" type="date"/></div>
+    <div class="fg"><label>Ngày xuất tằm *</label><input id="eb-out" type="date" oninput="calcEditBoxes()"/></div>
+    <div class="fg full" style="background:#e8f7f2;border-radius:6px;padding:8px 12px;font-size:12px;color:#0a5c46;">
+      <i class="ti ti-calendar"></i> Ngày dự kiến thu kén: <b id="eb-harvest-preview">—</b>
+    </div>
+  </div>
+  <div class="modal-ftr">
+    <button class="btn" onclick="closeModal('modal-edit-batch')">Huỷ</button>
+    <button class="btn btn-primary" onclick="saveEditBatch()"><i class="ti ti-check"></i> Lưu thay đổi</button>
+  </div>
+</div></div>
+
+<!-- ORDER -->
+<div class="modal-bg" id="modal-order">
+<div class="modal" style="width:700px;max-width:96vw;">
+  <div class="modal-hdr"><span class="modal-title"><i class="ti ti-clipboard-list"></i> Tạo đơn đặt tằm</span><span class="modal-close" onclick="closeModal('modal-order')"><i class="ti ti-x"></i></span></div>
+  <div class="form-grid" style="gap:14px;">
+
+    <!-- Searchable customer field -->
+    <div class="fg full" style="position:relative;">
+      <label style="font-size:13px;">Khách hàng * <span id="o-cust-selected-label" style="font-weight:400;color:var(--green);font-size:12px;"></span></label>
+      <input id="o-cust-search" type="text" placeholder="🔍  Tìm tên hoặc số điện thoại khách hàng..." autocomplete="off"
+        oninput="filterOrderCusts()" onfocus="showOrderCustDropdown()" style="width:100%;font-size:14px;padding:11px 13px;"/>
+      <input type="hidden" id="o-cust"/>
+      <div id="o-cust-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:2px solid var(--green);border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;z-index:500;box-shadow:0 6px 18px rgba(0,0,0,0.13);"></div>
+    </div>
+
+    <!-- Lô + Hộp -->
+    <div class="fg">
+      <label style="font-size:13px;">Lô tằm *</label>
+      <select id="o-lot" onchange="updateOrdLotInfo()" style="font-size:14px;padding:11px 13px;"></select>
+    </div>
+    <div class="fg">
+      <label style="font-size:13px;">Số hộp đặt *</label>
+      <input id="o-boxes" type="number" min="0.01" step="0.01" placeholder="VD: 1.50" oninput="calcOrderTotal()" style="font-size:14px;padding:11px 13px;"/>
+    </div>
+
+    <!-- Đơn giá + Điểm bán -->
+    <div class="fg">
+      <label style="font-size:13px;">Đơn giá / hộp (đ)</label>
+      <input id="o-price" type="number" min="0" step="1000" placeholder="VD: 1.000.000" oninput="calcOrderTotal()" style="font-size:14px;padding:11px 13px;"/>
+    </div>
+    <div class="fg">
+      <label style="font-size:13px;">Điểm bán *</label>
+      <select id="o-sp" style="font-size:14px;padding:11px 13px;"></select>
+    </div>
+
+    <!-- Ngày giờ đặt + Thành tiền -->
+    <div class="fg">
+      <label style="font-size:13px;">Ngày giờ đặt <span style="font-size:11px;color:#888;">(mặc định: lúc tạo đơn)</span></label>
+      <input id="o-date" type="datetime-local" style="font-size:14px;padding:11px 13px;"/>
+    </div>
+    <div class="fg" id="o-total-wrap" style="display:none;">
+      <label style="font-size:13px;">Thành tiền dự kiến</label>
+      <div style="background:#e8f7f2;border:2px solid #7dccb0;border-radius:7px;padding:11px 13px;font-size:15px;font-weight:700;color:#0a5c46;">
+        <i class="ti ti-calculator"></i> <span id="o-total-display">—</span>
+      </div>
+    </div>
+
+    <!-- Lot info -->
+    <div class="fg full"><div id="o-lot-info" style="padding:8px 12px;background:#e8f7f2;border-radius:6px;display:none;font-size:13px;color:#0a5c46;font-weight:600;"></div></div>
+
+    <!-- Phương thức thanh toán -->
+    <div class="fg full" style="background:#f8f8f8;border:1.5px solid #ddd;border-radius:8px;padding:14px 16px;">
+      <label style="font-size:13px;display:block;margin-bottom:10px;">Phương thức thanh toán</label>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;color:#333;">
+          <input type="radio" name="o-payment" id="o-pay-cash" value="Tiền mặt" checked style="width:18px;height:18px;accent-color:var(--green);"/>
+          <span style="font-size:18px;">💵</span> Tiền mặt
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;color:#333;">
+          <input type="radio" name="o-payment" id="o-pay-transfer" value="Chuyển khoản" style="width:18px;height:18px;accent-color:var(--green);"/>
+          <span style="font-size:18px;">🏦</span> Chuyển khoản
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;color:#333;">
+          <input type="radio" name="o-payment" id="o-pay-both" value="Tiền mặt + CK" style="width:18px;height:18px;accent-color:var(--green);"/>
+          <span style="font-size:18px;">🔄</span> Kết hợp
+        </label>
+      </div>
+    </div>
+
+    <!-- Đã trả + Còn nợ -->
+    <div class="fg">
+      <label style="font-size:13px;">Số tiền đã thanh toán (đ)</label>
+      <input id="o-paid" type="number" min="0" step="1000" placeholder="0" oninput="calcOrderDebt()" style="font-size:14px;padding:11px 13px;"/>
+    </div>
+    <div class="fg">
+      <label style="font-size:13px;">Còn nợ</label>
+      <input id="o-debt" type="text" readonly style="background:#f5f5f5;font-weight:700;font-size:14px;padding:11px 13px;"/>
+    </div>
+
+    <!-- Ghi chú -->
+    <div class="fg full">
+      <label style="font-size:13px;">Ghi chú</label>
+      <input id="o-note" type="text" placeholder="Ghi chú thêm" style="font-size:14px;padding:11px 13px;"/>
+    </div>
+  </div>
+  <div class="modal-ftr">
+    <button class="btn" onclick="closeModal('modal-order')" style="padding:11px 20px;font-size:14px;">Huỷ</button>
+    <button class="btn btn-primary" onclick="saveOrder()" style="padding:11px 24px;font-size:14px;"><i class="ti ti-check"></i> Xác nhận đặt</button>
+  </div>
+</div></div>
+
+<!-- TRANSACTION -->
+<div class="modal-bg" id="modal-tx">
+<div class="modal" style="width:620px;">
+  <div class="modal-hdr">
+    <span class="modal-title"><i class="ti ti-coins"></i> Nhập giao dịch bán kén</span>
+    <span class="modal-close" onclick="closeModal('modal-tx')"><i class="ti ti-x"></i></span>
+  </div>
+  <div class="form-grid" style="gap:14px;">
+
+    <!-- Bước 1: Chọn lô tằm để lọc khách hàng -->
+    <div class="fg full">
+      <label style="font-size:13px;">Lô tằm (lọc khách hàng theo lô)</label>
+      <select id="tx-lot-filter-modal" onchange="filterTxCusts()" style="font-size:14px;padding:11px 13px;">
+        <option value="">Tất cả lô đang thu kén</option>
+      </select>
+    </div>
+
+    <!-- Bước 2: Tìm khách hàng -->
+    <div class="fg full" style="position:relative;">
+      <label style="font-size:13px;">Khách hàng (đã đặt tằm, chưa bán kén) * <span id="tx-cust-label" style="font-weight:400;color:var(--green);font-size:12px;"></span></label>
+      <input id="tx-cust-search" type="text" placeholder="🔍  Tìm tên hoặc số điện thoại..." autocomplete="off"
+        oninput="filterTxCusts()" onfocus="showTxCustDropdown()" style="width:100%;font-size:14px;padding:11px 13px;"/>
+      <input type="hidden" id="tx-cust"/>
+      <div id="tx-cust-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:2px solid var(--green);border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;z-index:500;box-shadow:0 6px 18px rgba(0,0,0,0.13);"></div>
+    </div>
+
+    <!-- Thông tin đơn đặt đã chọn -->
+    <div class="fg full" id="tx-cust-info" style="display:none;background:#e8f7f2;border:1.5px solid #7dccb0;border-radius:8px;padding:10px 14px;font-size:13px;color:#0a5c46;"></div>
+
+    <!-- KL kén + Giá kén -->
+    <div class="fg">
+      <label style="font-size:13px;">Khối lượng kén (kg) *</label>
+      <input id="tx-kg" type="number" step="0.1" min="0.1" placeholder="Nhập kg kén" oninput="calcTx()" style="font-size:14px;padding:11px 13px;"/>
+    </div>
+    <div class="fg">
+      <label style="font-size:13px;">Giá kén (đ/kg) *</label>
+      <input id="tx-price" type="number" min="1" placeholder="VD: 190.000" oninput="calcTx()" style="font-size:14px;padding:11px 13px;"/>
+    </div>
+
+    <!-- Tiền kén -->
+    <div class="fg full">
+      <label style="font-size:13px;">Tiền kén (= KL kén × Giá kén)</label>
+      <input id="tx-total" type="text" readonly style="background:#f0f8ff;font-weight:700;color:#185FA5;border-color:#80b8e8;font-size:15px;padding:11px 13px;"/>
+    </div>
+  </div>
+  <div class="modal-ftr">
+    <button class="btn" onclick="closeModal('modal-tx')" style="padding:11px 20px;font-size:14px;">Huỷ</button>
+    <button class="btn btn-primary" onclick="saveTx()" style="padding:11px 24px;font-size:14px;"><i class="ti ti-check"></i> Chốt giao dịch</button>
+  </div>
+</div></div>
+
+<!-- DEBT DETAIL MODAL -->
+<div class="modal-bg" id="modal-debt-detail">
+<div class="modal" style="width:700px;max-width:96vw;">
+  <div class="modal-hdr">
+    <span class="modal-title"><i class="ti ti-credit-card-off"></i> Chi tiết công nợ khách hàng</span>
+    <span class="modal-close" onclick="closeModal('modal-debt-detail')"><i class="ti ti-x"></i></span>
+  </div>
+  <div id="debt-detail-info" style="background:#f5f5f5;border:1.5px solid #ddd;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:13px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;"></div>
+  <div id="debt-detail-total" style="background:#fbd0d0;border:2px solid #e08080;border-radius:8px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:700;color:#c0392b;"></div>
+  <div class="tbl-wrap">
+    <table id="debt-detail-tbl" style="width:100%;border-collapse:collapse;font-size:13px;"></table>
+  </div>
+  <div style="margin-top:14px;">
+    <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:6px;"><i class="ti ti-pencil"></i> Ghi chú công nợ</label>
+    <input id="debt-detail-note-input" type="text" placeholder="VD: hẹn trả 30/6, đã nhắc nợ..." 
+      style="width:100%;padding:9px 12px;border:2px solid #ddd;border-radius:7px;font-size:13px;"/>
+    <input type="hidden" id="debt-detail-cust-id"/>
+  </div>
+  <div class="modal-ftr">
+    <button class="btn" onclick="closeModal('modal-debt-detail')">Đóng</button>
+    <button class="btn btn-primary" onclick="saveDebtNote()"><i class="ti ti-check"></i> Lưu ghi chú</button>
+  </div>
+</div></div>
+
+<script>
+// ============================================================
+// DATA STORE
+// ============================================================
+const DB_KEY = 'hh_tamworm_db';
+
+const DB_DEFAULT = {
+  users:[
+    {id:1,name:'LÊ DUY ĐẢM',phone:'0901 000 001',login:'admin',pass:'23082014',role:'Admin',sp:'Tất cả'},
+    {id:2,name:'THÁI THỊ LAN HOA',phone:'0902 000 002',login:'lan.ld',pass:'123456',role:'Nhân viên',sp:'Chi nhánh Chư Prông'},
+    {id:3,name:'TRẦN BÁ PHƯỚC ANH',phone:'0903 000 003',login:'khoa.ld',pass:'123456',role:'Nhân viên',sp:'Chi nhánh Lâm Đồng'},
+  ],
+  salespoints:[
+    {id:1,code:'ĐB-01',name:'Chi nhánh Chư Prông',user:'Phạm Thị Lan',addr:'Chư Prông, Gia Lai'},
+    {id:2,code:'ĐB-02',name:'Chi nhánh Lâm Đồng',user:'Vũ Minh Khoa',addr:'Bảo Lộc, Lâm Đồng'},
+  ],
+  customers:[
+    {id:1,code:'KH-001',name:'Trần Thị Mai',phone:'0912 345 678',cccd:'012345678901',addr:'Chư Prông, Gia Lai',note:'Khách quen',sp:'Chi nhánh Chư Prông'},
+    {id:2,code:'KH-002',name:'Nguyễn Văn Hùng',phone:'0965 432 100',cccd:'034567890012',addr:'Lâm Đồng',note:'',sp:'Chi nhánh Lâm Đồng'},
+    {id:3,code:'KH-003',name:'Lê Thị Hoa',phone:'0978 111 222',cccd:'056789001234',addr:'Chư Prông, Gia Lai',note:'Ưu tiên lô mới',sp:'Chi nhánh Chư Prông'},
+  ],
+  batches:[
+    {id:1,code:'LT-2026-01',eggs:80,rate:1.25,boxes:400,dateIn:'10/05/2026',dateOut:'25/05/2026'},
+    {id:2,code:'LT-2026-02',eggs:64,rate:1.25,boxes:320,dateIn:'15/05/2026',dateOut:'30/05/2026'},
+    {id:3,code:'LT-2026-03',eggs:56,rate:1.25,boxes:280,dateIn:'20/05/2026',dateOut:'04/06/2026'},
+    {id:4,code:'LT-2026-04',eggs:48,rate:1.25,boxes:240,dateIn:'22/05/2026',dateOut:'06/06/2026'},
+  ],
+  orders:[
+    {id:1,ts:'14/05/2026 08:32',custId:1,lotCode:'LT-2026-02',boxes:15,price:250000,sp:'Chi nhánh Chư Prông',status:'Xác nhận',note:''},
+    {id:2,ts:'14/05/2026 09:10',custId:2,lotCode:'LT-2026-03',boxes:20,price:250000,sp:'Chi nhánh Lâm Đồng',status:'Xác nhận',note:''},
+    {id:3,ts:'14/05/2026 10:45',custId:3,lotCode:'LT-2026-01',boxes:8,price:250000,sp:'Chi nhánh Chư Prông',status:'Chờ xác nhận',note:''},
+  ],
+  transactions:[
+    {id:1,ts:'12/05/2026 14:00',custId:1,lotCode:'LT-2026-01',boxes:15,kg:52.5,price:185000},
+    {id:2,ts:'12/05/2026 15:30',custId:2,lotCode:'LT-2026-01',boxes:20,kg:68.0,price:185000},
+  ],
+  nextId:{user:4,sp:3,cust:4,batch:5,order:4,tx:3}
+};
+
+// ---- Index maps để lookup O(1) thay vì O(n) ----
+let _custMap={}, _txMap={}, _ordMap={};
+function buildIndexes(){
+  _custMap={};  DB.customers.forEach(c=>{_custMap[c.id]=c;});
+  _txMap={};    DB.transactions.forEach(t=>{_txMap[t.custId+'_'+t.lotCode]=t;});
+  _ordMap={};   DB.orders.forEach(o=>{_ordMap[o.custId+'_'+o.lotCode]=o;});
+}
+function getCustFast(id){return _custMap[id]||{name:'?',code:'?',phone:'',cccd:''};}
+function getTxFast(cId,lc){return _txMap[cId+'_'+lc]||null;}
+function getOrdFast(cId,lc){return _ordMap[cId+'_'+lc]||null;}
+
+// Load từ localStorage nếu có, không thì dùng dữ liệu mặc định
+function loadDB(){
+  try {
+    const saved = localStorage.getItem(DB_KEY);
+    if(saved){
+      const parsed = JSON.parse(saved);
+      if(parsed && parsed.users && parsed.nextId) return parsed;
+    }
+  } catch(e){}
+  return JSON.parse(JSON.stringify(DB_DEFAULT)); // deep copy
+}
+
+let DB = loadDB();
+if(!DB.debtNotes) DB.debtNotes = {}; // migrate cho file cũ chưa có field này
+buildIndexes(); // khởi tạo index sau khi load
+
+// Lưu DB vào localStorage sau mỗi thao tác ghi
+let _saveTimer = null;
+function saveDB(){
+  buildIndexes(); // cập nhật index sau mỗi thay đổi dữ liệu
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(()=>{
+    try {
+      localStorage.setItem(DB_KEY, JSON.stringify(DB));
+      showSaveIndicator();
+    } catch(e){
+      console.warn('Không thể lưu localStorage:', e);
+    }
+  }, 300); // debounce 300ms
+}
+
+function showSaveIndicator(){
+  const el = document.getElementById('save-indicator');
+  if(!el) return;
+  el.style.opacity='1';
+  el.textContent='✓ Đã lưu';
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>{ el.style.opacity='0'; }, 2000);
+}
+
+let currentUser = null;
+
+// ============================================================
+// HELPERS
+// ============================================================
+function fmtMoney(n){return Number(n).toLocaleString('vi-VN');}
+function nowTs(){
+  const d=new Date();
+  const dd=String(d.getDate()).padStart(2,'0');
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  const yy=d.getFullYear();
+  const hh=String(d.getHours()).padStart(2,'0');
+  const mi=String(d.getMinutes()).padStart(2,'0');
+  return `${dd}/${mm}/${yy} ${hh}:${mi}`;
+}
+// Chuyển giá trị datetime-local (YYYY-MM-DDTHH:MM) → DD/MM/YYYY HH:MM
+function parseDatetimeLocal(val){
+  if(!val)return nowTs();
+  const [datePart,timePart]=val.split('T');
+  if(!datePart)return nowTs();
+  const [y,m,d]=datePart.split('-');
+  const [hh,mi]=(timePart||'00:00').split(':');
+  return `${d}/${m}/${y} ${hh||'00'}:${mi||'00'}`;
+}
+// ---- Toast notification system ----
+function alert2(msg, type='error'){
+  showToast(msg, type);
+}
+function showToast(msg, type='error'){
+  let container=document.getElementById('toast-container');
+  if(!container){
+    container=document.createElement('div');
+    container.id='toast-container';
+    container.style.cssText='position:fixed;top:60px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;';
+    document.body.appendChild(container);
+  }
+  const colors={error:'#c0392b',success:'#0a5c46',warn:'#7a4500',info:'#185FA5'};
+  const icons={error:'ti-alert-circle',success:'ti-circle-check',warn:'ti-alert-triangle',info:'ti-info-circle'};
+  const toast=document.createElement('div');
+  toast.style.cssText=`background:#fff;border:2px solid ${colors[type]};border-left:5px solid ${colors[type]};border-radius:8px;padding:10px 14px;min-width:260px;max-width:360px;display:flex;align-items:flex-start;gap:10px;box-shadow:0 4px 16px rgba(0,0,0,0.15);pointer-events:all;animation:slideIn .2s ease;`;
+  toast.innerHTML=`
+    <i class="ti ${icons[type]}" style="font-size:18px;color:${colors[type]};flex-shrink:0;margin-top:1px;"></i>
+    <span style="font-size:13px;color:#222;flex:1;line-height:1.5;">${msg}</span>
+    <span onclick="this.parentElement.remove()" style="cursor:pointer;color:#aaa;font-size:16px;flex-shrink:0;line-height:1;">×</span>`;
+  container.appendChild(toast);
+  setTimeout(()=>{toast.style.opacity='0';toast.style.transition='opacity .3s';setTimeout(()=>toast.remove(),300);}, 3500);
+}
+// inject toast keyframe
+(function(){const s=document.createElement('style');s.textContent='@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}';document.head.appendChild(s);})();
+function getLotBooked(code){
+  const sum=DB.orders.filter(o=>o.lotCode===code&&o.status!=='Khách hủy').reduce((s,o)=>s+o.boxes,0);
+  return Math.round(sum*100)/100;
+}
+function getLotBoxes(code){const b=DB.batches.find(b=>b.code===code);return b?b.boxes:0;}
+function getLotAvail(code){return Math.round((getLotBoxes(code)-getLotBooked(code))*100)/100;}
+function getLotSold(code){return DB.transactions.filter(t=>t.lotCode===code).reduce((s,t)=>s+t.boxes,0);}
+function getLotBoxes(code){const b=DB.batches.find(b=>b.code===code);return b?b.boxes:0;}
+
+// Dùng cho dropdown đặt tằm: chỉ lô có dateOut >= hôm nay (chưa xuất tằm)
+function getOrderableBatches(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  return DB.batches.filter(b=>{
+    const out=parseDMY(b.dateOut);
+    return out&&out>=today;
+  });
+}
+
+// Parse "dd/mm/yyyy" → Date object (midnight local)
+function parseDMY(str){
+  if(!str)return null;
+  const[d,m,y]=str.split('/');
+  return new Date(parseInt(y),parseInt(m)-1,parseInt(d));
+}
+// Lô "còn hoạt động" = ngày dự kiến thu kén chưa qua (dateOut + 20 ngày >= hôm nay)
+function lotNotYetExported(b){
+  const out=parseDMY(b.dateOut);
+  if(!out)return true;
+  const harvestEnd=new Date(out);
+  harvestEnd.setDate(harvestEnd.getDate()+20); // ngày thu kén muộn nhất
+  harvestEnd.setHours(0,0,0,0);
+  const today=new Date(); today.setHours(0,0,0,0);
+  return harvestEnd>=today;
+}
+function getActiveBatches(){return DB.batches.filter(lotNotYetExported);}
+
+function lotStatus(code){
+  const tot=getLotBoxes(code); const bkd=getLotBooked(code); const pct=tot?bkd/tot:0;
+  if(pct>=0.95)return 'Gần hết'; if(pct>=0.6)return 'Sắp hết'; return 'Còn hàng';
+}
+function badgeLot(code){const s=lotStatus(code);const m={'Gần hết':'b-red','Sắp hết':'b-amber','Còn hàng':'b-green'};return `<span class="badge ${m[s]}">${s}</span>`;}
+function badgeOrd(s){const m={'Xác nhận':'b-green','Chờ xác nhận':'b-amber','Khách hủy':'b-red'};return `<span class="badge ${m[s]||'b-gray'}">${s}</span>`;}
+function getCust(id){return DB.customers.find(c=>c.id===id)||{name:'?',code:'?',phone:'',cccd:''};}
+function getSP(name){return DB.salespoints.find(s=>s.name===name)||{};}
+
+
+// ============================================================
+// MOBILE SIDEBAR & BOTTOM NAV
+// ============================================================
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  const bd=document.getElementById('sidebar-backdrop');
+  const open=sb.classList.toggle('open');
+  bd.classList.toggle('show',open);
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-backdrop').classList.remove('show');
+}
+function setBottomNav(id){
+  document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
+  const el=document.getElementById('bn-'+id);
+  if(el) el.classList.add('active');
+}
+
+
+function doLogin(){
+  const u=document.getElementById('inp-user').value.trim();
+  const p=document.getElementById('inp-pass').value;
+  const found=DB.users.find(x=>x.login===u&&x.pass===p);
+  if(!found){document.getElementById('login-err').style.display='block';return;}
+  currentUser=found;
+  document.getElementById('login-err').style.display='none';
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('top-name').textContent=found.name;
+  document.getElementById('top-avatar').textContent=found.name.split(' ').map(w=>w[0]).slice(-2).join('').toUpperCase();
+  document.getElementById('top-role').textContent=found.role;
+  document.getElementById('sb-role').textContent=found.role+(found.role==='Nhân viên'?' - '+found.sp:'');
+  // hide settings nav for non-admin
+  document.getElementById('nav-settings').style.display=(found.role==='Admin'||found.role==='Quản Lý')?'':'none';
+  document.getElementById('nav-users-item').style.display=found.role==='Admin'?'':'none';
+  // show backup button only for admin
+  document.getElementById('btn-backup').style.display=found.role==='Admin'?'':'none';
+  document.getElementById('nav-backup-item').style.display=found.role==='Admin'?'':'none';
+  // show "Xem tất cả" lô tằm only for admin
+  document.getElementById('btn-xem-tatca').style.display=(found.role==='Admin'||found.role==='Quản Lý')?'':'none';
+  initFilters();
+  goPage('dashboard',document.querySelector('.nav-item'));
+}
+document.getElementById('inp-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+document.getElementById('inp-user').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+function resetAndReload(){
+  if(!confirm("Xác nhận xoá toàn bộ cache và reset về dữ liệu mặc định?\n\nSau khi reset:\n- Đăng nhập: admin\n- Mật khẩu: admin123\n\n⚠️ Dữ liệu thực của bạn sẽ bị mất!")) return;
+  localStorage.removeItem("hh_tamworm_db");
+  location.reload();
+}
+function doLogout(){
+  currentUser=null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('inp-user').value='';
+  document.getElementById('inp-pass').value='';
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+const PAGE_TITLES={'dashboard':'Trang chủ','users':'Quản lý user','salespoints':'Điểm bán tằm','customers':'Khách hàng','batches':'Quản lý lô tằm','orders':'Đặt tằm','transactions':'Bán kén / Thu tiền tằm','reports':'Báo cáo & Thống kê','backup':'Backup dữ liệu','debts':'Quản lý công nợ'};
+const RENDERERS={'dashboard':renderDashboard,'users':renderUsers,'salespoints':renderSP,'customers':renderCustomers,'batches':renderBatches,'orders':renderOrders,'transactions':renderTx,'reports':renderReports,'backup':renderBackup,'debts':renderDebts};
+function goPage(id,el){
+  document.querySelectorAll('.pg').forEach(p=>p.style.display='none');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('pg-'+id).style.display='';
+  document.getElementById('page-header').textContent=PAGE_TITLES[id]||id;
+  if(el)el.classList.add('active');
+  else{document.querySelectorAll('.nav-item').forEach(n=>{if(n.textContent.trim().startsWith(PAGE_TITLES[id]?.split(' ')[0]))n.classList.add('active');});}
+  if(RENDERERS[id])RENDERERS[id]();
+  closeSidebar();
+  setBottomNav(id);
+}
+
+// ============================================================
+// MODALS
+// ============================================================
+function openModal(id){
+  populateModal(id);
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-bg').forEach(m=>{
+  m.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+});
+
+function populateModal(id){
+  // ---- Reset tất cả text/number/date/password input trong modal ----
+  const modal=document.getElementById(id);
+  if(modal){
+    modal.querySelectorAll('input:not([type=hidden])').forEach(el=>{
+      if(el.readOnly) return; // bỏ qua field readonly (vd: hộp dự kiến)
+      el.value='';
+    });
+    modal.querySelectorAll('select').forEach(el=>{ el.selectedIndex=0; });
+    modal.querySelectorAll('textarea').forEach(el=>{ el.value=''; });
+  }
+
+  if(id==='modal-sp'){
+    const sel=document.getElementById('sp-user');
+    sel.innerHTML='<option value="">-- Chọn user --</option>'+DB.users.filter(u=>u.role==='Nhân viên').map(u=>`<option>${u.name}</option>`).join('');
+  }
+  if(id==='modal-order'){
+    // reset searchable customer field
+    document.getElementById('o-cust-search').value='';
+    document.getElementById('o-cust').value='';
+    document.getElementById('o-cust-selected-label').textContent='';
+    document.getElementById('o-cust-dropdown').style.display='none';
+    // Lô tằm: Admin thấy tất cả lô còn hộp; Nhân viên chỉ thấy lô có dateOut >= hôm nay còn hộp
+    const sl=document.getElementById('o-lot');
+    const allAvailLots=DB.batches.filter(b=>getLotAvail(b.code)>0);
+    let eligibleLots;
+    if(currentUser.role==='Admin'){
+      eligibleLots=allAvailLots; // Admin thấy tất cả
+    } else {
+      eligibleLots=getOrderableBatches().filter(b=>getLotAvail(b.code)>0); // Nhân viên: dateOut >= hôm nay
+    }
+    sl.innerHTML='<option value="">-- Chọn lô --</option>'+eligibleLots.map(b=>{
+      const avail=getLotAvail(b.code);
+      return `<option value="${b.code}">${b.code} (còn ${avail} hộp – xuất ${b.dateOut})</option>`;
+    }).join('');
+    if(!eligibleLots.length) sl.innerHTML='<option value="">Không có lô phù hợp</option>';
+    const infoEl=document.getElementById('o-lot-info');
+    if(infoEl){infoEl.textContent='';infoEl.style.display='none';}
+    // Mặc định ngày giờ đặt = lúc mở form
+    const nowDt=new Date();
+    const pad=n=>String(n).padStart(2,'0');
+    const nowLocal=`${nowDt.getFullYear()}-${pad(nowDt.getMonth()+1)}-${pad(nowDt.getDate())}T${pad(nowDt.getHours())}:${pad(nowDt.getMinutes())}`;
+    document.getElementById('o-date').value=nowLocal;
+    const ssp=document.getElementById('o-sp');
+    if(currentUser.role==='Nhân viên'){
+      const mysp=DB.salespoints.find(s=>s.name===currentUser.sp||s.user===currentUser.name);
+      ssp.innerHTML=mysp?`<option value="${mysp.name}">${mysp.name}</option>`:'<option value="">Chưa có điểm bán</option>';
+      ssp.disabled=true;
+    } else {
+      ssp.innerHTML='<option value="">-- Chọn điểm bán --</option>'+DB.salespoints.map(s=>`<option>${s.name}</option>`).join('');
+      ssp.disabled=false;
+    }
+  }
+  if(id==='modal-user'){
+    // Reset role về mặc định Admin, ẩn/hiện sp field
+    document.getElementById('u-role').value='Admin';
+    const sel=document.getElementById('u-sp');
+    sel.innerHTML='<option value="">-- Chọn điểm --</option>'+DB.salespoints.map(s=>`<option>${s.name}</option>`).join('');
+    toggleSpField();
+  }
+  if(id==='modal-batch'){
+    // Reset rate về mặc định 0.75
+    document.getElementById('b-rate').value='0.75';
+  }
+  if(id==='modal-cust'){
+    const sel=document.getElementById('c-sp');
+    if(currentUser.role==='Nhân viên'){
+      const mysp=DB.salespoints.find(s=>s.name===currentUser.sp||s.user===currentUser.name);
+      sel.innerHTML=mysp?`<option value="${mysp.name}">${mysp.name}</option>`:'<option value="">Chưa có điểm bán</option>';
+      sel.disabled=true;
+    } else {
+      sel.innerHTML='<option value="">-- Chọn điểm bán --</option>'+DB.salespoints.map(s=>`<option>${s.name}</option>`).join('');
+      sel.disabled=false;
+    }
+  }
+}
+
+// ============================================================
+// INIT FILTERS
+// ============================================================
+function initFilters(){
+  // populate all lot filters
+  ['ord-lot-filter','tx-lot-filter','rpt-lot','dash-lot-filter'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.innerHTML='<option value="">Tất cả lô</option>'+DB.batches.map(b=>`<option>${b.code}</option>`).join('');}
+  });
+  ['ord-sp-filter'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){
+      if(currentUser.role==='Admin'){
+        el.style.display='';
+        el.innerHTML='<option value="">Tất cả điểm bán</option>'+DB.salespoints.map(s=>`<option>${s.name}</option>`).join('');
+      } else {
+        el.style.display='none';
+      }
+    }
+  });
+  // tx-sp-filter: Admin & Quản Lý thấy dropdown điểm bán
+  const txSpEl=document.getElementById('tx-sp-filter');
+  if(txSpEl){
+    if(currentUser.role==='Admin'||currentUser.role==='Quản Lý'){
+      txSpEl.style.display='';
+      txSpEl.innerHTML='<option value="">Tất cả điểm bán</option>'+DB.salespoints.map(s=>`<option>${s.name}</option>`).join('');
+    } else {
+      txSpEl.style.display='none';
+    }
+  }
+  // rpt-sp: Admin & Quản Lý thấy tất cả điểm, Nhân viên ẩn
+  const rptSpEl=document.getElementById('rpt-sp');
+  if(rptSpEl){
+    if(currentUser.role==='Admin'||currentUser.role==='Quản Lý'){
+      rptSpEl.style.display='';
+      rptSpEl.innerHTML='<option value="">Tất cả điểm bán</option>'+DB.salespoints.map(s=>`<option>${s.name}</option>`).join('');
+    } else {
+      rptSpEl.style.display='none';
+    }
+  }
+}
+function refreshFilters(){initFilters();}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function renderDashboard(){
+  // Lô chưa xuất (dateOut >= hôm nay) — dùng cho stat boxes và đặt tằm
+  const today=new Date(); today.setHours(0,0,0,0);
+  const notExportedBatches=DB.batches.filter(b=>{
+    const out=parseDMY(b.dateOut); return out&&out>=today;
+  });
+  // Lô chưa qua thu kén (dateOut + 20 ngày >= hôm nay) — dùng cho bảng tình trạng
+  const activeBatches=getActiveBatches();
+  const totalLots=notExportedBatches.length;
+  // 3 ô Tổng hộp / Đã đặt / Còn tồn tính theo lô CHƯA XUẤT (dateOut >= hôm nay)
+  const totalBoxes=Math.round(notExportedBatches.reduce((s,b)=>s+b.boxes,0)*100)/100;
+  const booked=Math.round(notExportedBatches.reduce((s,b)=>s+getLotBooked(b.code),0)*100)/100;
+  const avail=Math.round((totalBoxes-booked)*100)/100;
+  document.getElementById('dash-stats').innerHTML=`
+    <div class="stat-box"><div class="lbl"><i class="ti ti-package"></i> Tổng lô tằm</div><div class="val">${totalLots}</div><div class="sub">Lô chưa xuất</div></div>
+    <div class="stat-box green"><div class="lbl"><i class="ti ti-box"></i> Tổng số hộp</div><div class="val">${totalBoxes.toLocaleString()}</div><div class="sub">Dự kiến các lô chưa xuất</div></div>
+    <div class="stat-box amber"><div class="lbl"><i class="ti ti-check"></i> Đã đặt</div><div class="val">${booked.toLocaleString()}</div><div class="sub">${totalBoxes?Math.round(booked/totalBoxes*100):0}% tổng hộp</div></div>
+    <div class="stat-box red"><div class="lbl"><i class="ti ti-archive"></i> Còn tồn</div><div class="val">${avail.toLocaleString()}</div><div class="sub">${totalBoxes?Math.round(avail/totalBoxes*100):0}% chưa có khách</div></div>`;
+  renderDashLots();
+  const df=document.getElementById('dash-lot-filter');
+  df.innerHTML='<option value="">Tất cả lô</option>'+activeBatches.map(b=>`<option>${b.code}</option>`).join('');
+  renderDashOrders();
+}
+function renderDashLots(){
+  const activeBatches=getActiveBatches();
+  const rows=activeBatches.map((b,i)=>{
+    const bkd=getLotBooked(b.code); const avail=Math.round((b.boxes-bkd)*100)/100; const pct=b.boxes?Math.round(bkd/b.boxes*100):0;
+    const color=pct>=95?'#e24b4a':pct>=60?'#EF9F27':'#1D9E75';
+    const txtColor=pct>=95?'#8b1a1a':pct>=60?'#7a4500':'#0a5c46';
+    const harvest=calcHarvestRange(b.dateOut);
+    return `<tr>
+      <td style="font-weight:700;">${b.code}</td><td>${b.dateIn}</td><td>${b.dateOut}</td>
+      <td style="color:#185FA5;font-size:11px;font-weight:600;">${harvest}</td>
+      <td>${b.boxes}</td><td>${bkd}</td><td style="font-weight:700;color:${txtColor};">${avail}</td>
+      <td><div style="font-size:11px;font-weight:700;color:${txtColor};">${pct}%</div><div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${color};"></div></div></td>
+      <td>${badgeLot(b.code)}</td>
+    </tr>`;
+  }).join('');
+  // Dòng tổng bảng lô tằm
+  const sumTotalBoxes=Math.round(activeBatches.reduce((s,b)=>s+b.boxes,0)*100)/100;
+  const sumBooked=Math.round(activeBatches.reduce((s,b)=>s+getLotBooked(b.code),0)*100)/100;
+  const sumAvail=Math.round((sumTotalBoxes-sumBooked)*100)/100;
+  const sumPct=sumTotalBoxes?Math.round(sumBooked/sumTotalBoxes*100):0;
+  const sumColor=sumPct>=95?'#8b1a1a':sumPct>=60?'#7a4500':'#0a5c46';
+  const totalRowLots=activeBatches.length>0?`<tr style="background:#f0f7f4;font-weight:700;border-top:2px solid #7dccb0;">
+    <td colspan="4" style="text-align:right;color:#444;padding:8px 12px;">TỔNG CỘNG (${activeBatches.length} lô)</td>
+    <td style="color:#185FA5;">${sumTotalBoxes}</td>
+    <td style="color:#0a5c46;">${sumBooked}</td>
+    <td style="color:${sumColor};">${sumAvail}</td>
+    <td><div style="font-size:11px;font-weight:700;color:${sumColor};">${sumPct}%</div><div class="prog-bar"><div class="prog-fill" style="width:${sumPct}%;background:${sumPct>=95?'#e24b4a':sumPct>=60?'#EF9F27':'#1D9E75'};"></div></div></td>
+    <td>—</td>
+  </tr>`:'';
+  document.getElementById('dash-lots-tbl').innerHTML=`<thead><tr>
+    <th>Lô số</th><th>Ngày nhập trứng</th><th>Ngày xuất tằm</th>
+    <th style="color:#185FA5;">Dự kiến thu kén</th>
+    <th>Tổng hộp</th><th>Đã đặt</th><th>Còn tồn</th><th>Tỉ lệ đặt</th><th>Trạng thái</th>
+  </tr></thead><tbody>${rows||'<tr><td colspan="9" style="text-align:center;color:#999;padding:20px;">Không có lô tằm chưa xuất</td></tr>'}${totalRowLots}</tbody>`;
+}
+function renderDashOrders(){
+  const lotF=document.getElementById('dash-lot-filter').value;
+  let list=DB.orders;
+  if(lotF)list=list.filter(o=>o.lotCode===lotF);
+  // filter by salespoint if not admin
+  if(currentUser.role==='Nhân viên') list=list.filter(o=>o.sp===currentUser.sp);
+  const activeOrders=list.filter(o=>o.status!=='Khách hủy');
+  const rows=list.map((o,i)=>{
+    const c=getCust(o.custId);
+    return `<tr><td>${i+1}</td><td>${o.ts}</td><td style="font-weight:700;">${c.name||''}</td><td>${c.phone||''}</td><td><span class="badge b-gray">${o.lotCode}</span></td><td style="font-weight:700;">${o.status==='Khách hủy'?'<s style=\"color:#aaa;\">' +o.boxes+'</s>':o.boxes}</td><td>${o.sp}</td><td>${badgeOrd(o.status)}</td></tr>`;
+  }).join('');
+  // Dòng tổng: chỉ tính đơn chưa hủy
+  const sumOrdBoxes=Math.round(activeOrders.reduce((s,o)=>s+o.boxes,0)*100)/100;
+  const totalRowOrders=list.length>0?`<tr style="background:#f0f7f4;font-weight:700;border-top:2px solid #7dccb0;">
+    <td colspan="5" style="text-align:right;color:#444;padding:8px 12px;">TỔNG CỘNG (${activeOrders.length} đơn)</td>
+    <td style="color:#185FA5;font-size:14px;">${sumOrdBoxes}</td>
+    <td colspan="2">—</td>
+  </tr>`:'';
+  document.getElementById('dash-orders-tbl').innerHTML=`<thead><tr><th>#</th><th>Ngày giờ đặt</th><th>Khách hàng</th><th>Điện thoại</th><th>Lô</th><th>Hộp đặt</th><th>Điểm bán</th><th>Trạng thái</th></tr></thead><tbody>${rows||'<tr><td colspan="8" style="text-align:center;color:#999;padding:20px;">Không có đơn nào</td></tr>'}${totalRowOrders}</tbody>`;
+}
+
+// ============================================================
+// USERS
+// ============================================================
+function renderUsers(){
+  if(currentUser.role!=='Admin'){document.getElementById('users-tbl').innerHTML='<tbody><tr><td style="text-align:center;padding:40px;color:#999;"><i class="ti ti-lock" style="font-size:32px;display:block;margin-bottom:8px;"></i>Chỉ Admin mới có quyền quản lý user!</td></tr></tbody>';return;}
+  const rows=DB.users.map((u,i)=>`<tr ondblclick="openEditUser(${u.id})" style="cursor:pointer;" title="Nhấp đúp để sửa">
+    <td>${i+1}</td><td style="font-weight:700;">${u.name}</td><td>${u.phone}</td><td>${u.login}</td>
+    <td>${u.role==='Admin'?'<span class="badge b-blue">Admin</span>':u.role==='Quản Lý'?'<span class="badge" style="background:#e8f4fd;color:#1a5276;border:1px solid #aed6f1;font-size:11px;padding:2px 7px;border-radius:10px;">Quản Lý</span>':'<span class="badge b-gray">Nhân viên</span>'}</td>
+    <td>${u.sp||'—'}</td>
+    <td><button class="btn btn-sm" onclick="event.stopPropagation();deleteUser(${u.id})" title="Xoá"><i class="ti ti-trash" style="color:#c0392b;"></i></button></td>
+  </tr>`).join('');
+  document.getElementById('users-tbl').innerHTML=`<thead><tr><th>#</th><th>Họ và tên</th><th>SĐT</th><th>Tên đăng nhập</th><th>Quyền</th><th>Điểm bán phụ trách</th><th>Thao tác</th></tr></thead><tbody>${rows}</tbody>`;
+  // Chỉ thêm hint 1 lần duy nhất
+}
+function toggleSpField(){
+  const r=document.getElementById('u-role').value;
+  document.getElementById('u-sp-wrap').style.display=(r==='Admin'||r==='Quản Lý')?'none':'';
+}
+function saveUser(){
+  const name=document.getElementById('u-name').value.trim();
+  const phone=document.getElementById('u-phone').value.trim();
+  const login=document.getElementById('u-login').value.trim();
+  const pass=document.getElementById('u-pass').value;
+  const role=document.getElementById('u-role').value;
+  const sp=document.getElementById('u-sp').value;
+  if(!name||!phone||!login||!pass){showToast('Vui lòng điền đầy đủ thông tin!','warn');return;}
+  if(pass.length<6){showToast('Mật khẩu phải ít nhất 6 ký tự!','warn');return;}
+  if(DB.users.find(u=>u.login===login)){showToast(`Tên đăng nhập "<b>${login}</b>" đã tồn tại! Vui lòng chọn tên khác.`,'error');return;}
+  DB.users.push({id:DB.nextId.user++,name,phone,login,pass,role,sp:(role==='Admin'||role==='Quản Lý')?'Tất cả':sp});
+  closeModal('modal-user'); renderUsers(); refreshFilters(); saveDB();
+  showToast(`Đã thêm user <b>${name}</b> thành công!`,'success');
+}
+function deleteUser(id){
+  if(currentUser.role!=='Admin'){showToast('Chỉ Admin mới có quyền xoá user!','error');return;}
+  if(id===1){showToast('Không thể xoá tài khoản Admin chính!','error');return;}
+  if(!confirm('Xác nhận xoá user này?'))return;
+  DB.users=DB.users.filter(u=>u.id!==id); saveDB(); renderUsers();
+}
+
+// ============================================================
+// SALESPOINTS
+// ============================================================
+function renderSP(){
+  const rows=DB.salespoints.map((s,i)=>`<tr ondblclick="openEditSP(${s.id})" style="cursor:pointer;" title="Nhấp đúp để sửa">
+    <td>${i+1}</td><td>${s.code}</td><td style="font-weight:700;">${s.name}</td><td>${s.user||'—'}</td><td>${s.addr}</td>
+    <td><button class="btn btn-sm" onclick="event.stopPropagation();deleteSP(${s.id})"><i class="ti ti-trash" style="color:#c0392b;"></i></button></td>
+  </tr>`).join('');
+  document.getElementById('sp-tbl').innerHTML=`<thead><tr><th>#</th><th>Điểm bán số</th><th>Tên điểm bán</th><th>User phụ trách</th><th>Địa điểm</th><th>Thao tác</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center;padding:20px;color:#999;">Chưa có điểm bán</td></tr>'}</tbody>`;
+  // Chỉ thêm hint 1 lần duy nhất
+}
+function saveSP(){
+  const name=document.getElementById('sp-name').value.trim();
+  const user=document.getElementById('sp-user').value;
+  const addr=document.getElementById('sp-addr').value.trim();
+  if(!name||!addr){showToast('Vui lòng điền đầy đủ thông tin!','warn');return;}
+  const id=DB.nextId.sp++;
+  const code='ĐB-'+String(id).padStart(2,'0');
+  DB.salespoints.push({id,code,name,user,addr});
+  closeModal('modal-sp'); renderSP(); refreshFilters(); saveDB();
+  showToast(`Đã thêm điểm bán <b>${name}</b> thành công!`,'success');
+  ['sp-name','sp-addr'].forEach(x=>document.getElementById(x).value='');
+}
+function deleteSP(id){
+  if(currentUser.role!=='Admin'){showToast('Chỉ Admin mới có quyền xoá điểm bán!','error');return;}
+  if(!confirm('Xác nhận xoá điểm bán?'))return;
+  DB.salespoints=DB.salespoints.filter(s=>s.id!==id); saveDB(); renderSP(); refreshFilters();
+}
+
+// ============================================================
+// CUSTOMERS
+// ============================================================
+function renderCustomers(){
+  const q=(document.getElementById('cust-search')?.value||'').toLowerCase();
+  let list=DB.customers;
+  // Nhân viên chỉ thấy khách hàng của điểm bán mình phụ trách
+  if(currentUser.role==='Nhân viên'){
+    const mysp=currentUser.sp;
+    list=list.filter(c=>c.sp===mysp);
+  }
+  if(q)list=list.filter(c=>
+    c.name.toLowerCase().includes(q)||
+    c.phone.includes(q)||
+    c.cccd.includes(q)||
+    (c.sp||'').toLowerCase().includes(q)
+  );
+  const rows=list.map((c,i)=>`<tr ondblclick="openEditCust(${c.id})" style="cursor:pointer;" title="Nhấp đúp để sửa">
+    <td>${i+1}</td><td style="color:#666;">${c.code}</td><td style="font-weight:700;">${c.name}</td>
+    <td>${c.phone}</td><td>${c.cccd}</td><td>${c.addr}</td>
+    <td><span class="badge b-gray" style="font-size:11px;">${c.sp||'—'}</span></td>
+    <td style="color:#888;">${c.note||''}</td>
+    <td><button class="btn btn-sm" onclick="event.stopPropagation();deleteCust(${c.id})"><i class="ti ti-trash" style="color:#c0392b;"></i></button></td>
+  </tr>`).join('');
+  document.getElementById('cust-tbl').innerHTML=`<thead><tr><th>#</th><th>Mã KH</th><th>Họ và tên</th><th>Số điện thoại</th><th>Số CCCD</th><th>Địa chỉ</th><th>Điểm bán</th><th>Ghi chú</th><th>Xoá</th></tr></thead><tbody>${rows||'<tr><td colspan="9" style="text-align:center;padding:20px;color:#999;">Không tìm thấy</td></tr>'}</tbody>`;
+}
+function saveCust(){
+  const name=document.getElementById('c-name').value.trim();
+  const phone=document.getElementById('c-phone').value.trim();
+  const cccd=document.getElementById('c-cccd').value.trim();
+  const sp=document.getElementById('c-sp').value;
+  const addr=document.getElementById('c-addr').value.trim();
+  const note=document.getElementById('c-note').value.trim();
+  if(!name||!phone||!cccd){showToast('Vui lòng điền Tên, SĐT và CCCD!','warn');return;}
+  if(!sp){showToast('Vui lòng chọn Điểm bán!','warn');return;}
+  if(!/^[0-9]{9,12}$/.test(cccd)){showToast('Số CCCD phải là 9–12 chữ số!','warn');return;}
+  // Kiểm tra trùng SĐT
+  const dupPhone=DB.customers.find(c=>c.phone===phone);
+  if(dupPhone){showToast(`Số điện thoại <b>${phone}</b> đã được đăng ký cho khách <b>${dupPhone.name}</b> (${dupPhone.code})!`,'error');return;}
+  // Kiểm tra trùng CCCD
+  const dupCccd=DB.customers.find(c=>c.cccd===cccd);
+  if(dupCccd){showToast(`Số CCCD <b>${cccd}</b> đã được đăng ký cho khách <b>${dupCccd.name}</b> (${dupCccd.code})!`,'error');return;}
+  // Cảnh báo trùng tên (không chặn, chỉ thông báo)
+  const dupName=DB.customers.filter(c=>c.name.toLowerCase()===name.toLowerCase());
+  if(dupName.length>0){
+    const nameList=dupName.map(c=>`${c.name} (${c.code})`).join(', ');
+    if(!confirm(`⚠️ Đã có khách hàng tên "${name}" trong hệ thống:\n${nameList}\n\nBạn có chắc muốn thêm khách hàng này không?`))return;
+  }
+  const id=DB.nextId.cust++;
+  const code='KH-'+String(id).padStart(3,'0');
+  DB.customers.push({id,code,name,phone,cccd,addr,note,sp});
+  closeModal('modal-cust'); renderCustomers(); saveDB();
+  showToast(`Đã thêm khách hàng <b>${name}</b> (${code}) thành công!`,'success');
+  ['c-name','c-phone','c-cccd','c-addr','c-note'].forEach(x=>document.getElementById(x).value='');
+}
+function deleteCust(id){
+  if(currentUser.role!=='Admin'){showToast('Chỉ Admin mới có quyền xoá khách hàng!','error');return;}
+  if(!confirm('Xác nhận xoá khách hàng?'))return;
+  DB.customers=DB.customers.filter(c=>c.id!==id); saveDB(); renderCustomers();
+}
+function openEditCust(id){
+  const c=DB.customers.find(x=>x.id===id);
+  if(!c)return;
+  document.getElementById('ec-id').value=c.id;
+  document.getElementById('ec-code-display').textContent=c.code;
+  document.getElementById('ec-name').value=c.name;
+  document.getElementById('ec-phone').value=c.phone;
+  document.getElementById('ec-cccd').value=c.cccd;
+  document.getElementById('ec-addr').value=c.addr||'';
+  document.getElementById('ec-note').value=c.note||'';
+  // sp dropdown: staff locked to own sp, admin free
+  const sel=document.getElementById('ec-sp');
+  if(currentUser.role==='Nhân viên'){
+    const mysp=DB.salespoints.find(s=>s.name===currentUser.sp||s.user===currentUser.name);
+    sel.innerHTML=mysp?`<option value="${mysp.name}">${mysp.name}</option>`:'<option value="">—</option>';
+    sel.disabled=true;
+  } else {
+    sel.innerHTML='<option value="">-- Chọn điểm --</option>'+DB.salespoints.map(s=>`<option${s.name===c.sp?' selected':''}>${s.name}</option>`).join('');
+    sel.disabled=false;
+  }
+  document.getElementById('modal-edit-cust').classList.add('open');
+}
+function saveEditCust(){
+  const id=parseInt(document.getElementById('ec-id').value);
+  const c=DB.customers.find(x=>x.id===id);
+  if(!c)return;
+  const name=document.getElementById('ec-name').value.trim();
+  const phone=document.getElementById('ec-phone').value.trim();
+  const cccd=document.getElementById('ec-cccd').value.trim();
+  const sp=document.getElementById('ec-sp').value;
+  const addr=document.getElementById('ec-addr').value.trim();
+  const note=document.getElementById('ec-note').value.trim();
+  if(!name||!phone||!cccd){showToast('Vui lòng điền Tên, SĐT và CCCD!','warn');return;}
+  if(!/^[0-9]{9,12}$/.test(cccd)){showToast('Số CCCD phải là 9–12 chữ số!','warn');return;}
+  // Kiểm tra trùng SĐT (loại trừ chính KH đang sửa)
+  const dupPhoneE=DB.customers.find(x=>x.phone===phone&&x.id!==id);
+  if(dupPhoneE){showToast(`Số điện thoại <b>${phone}</b> đã được đăng ký cho khách <b>${dupPhoneE.name}</b> (${dupPhoneE.code})!`,'error');return;}
+  // Kiểm tra trùng CCCD (loại trừ chính KH đang sửa)
+  const dupCccdE=DB.customers.find(x=>x.cccd===cccd&&x.id!==id);
+  if(dupCccdE){showToast(`Số CCCD <b>${cccd}</b> đã được đăng ký cho khách <b>${dupCccdE.name}</b> (${dupCccdE.code})!`,'error');return;}
+  // Cảnh báo trùng tên (loại trừ chính KH đang sửa)
+  const dupNameE=DB.customers.filter(x=>x.name.toLowerCase()===name.toLowerCase()&&x.id!==id);
+  if(dupNameE.length>0){
+    const nameListE=dupNameE.map(x=>`${x.name} (${x.code})`).join(', ');
+    if(!confirm(`⚠️ Đã có khách hàng tên "${name}" trong hệ thống:\n${nameListE}\n\nBạn có chắc muốn lưu không?`))return;
+  }
+  c.name=name; c.phone=phone; c.cccd=cccd; c.sp=sp; c.addr=addr; c.note=note;
+  closeModal('modal-edit-cust');
+  renderCustomers(); saveDB();
+  showToast('Đã cập nhật thông tin khách hàng thành công!','success');
+}
+
+// ============================================================
+// BATCHES
+// ============================================================
+function calcBoxes(){
+  const eggs=parseFloat(document.getElementById('b-eggs').value)||0;
+  const rate=parseFloat(document.getElementById('b-rate').value)||0;
+  // Công thức: Hộp dự kiến = Số bìa × 4 × Tỉ lệ dồn — lấy 2 số thập phân
+  const boxes=eggs&&rate?Math.round(eggs*4*rate*100)/100:0;
+  document.getElementById('b-boxes').value=boxes||'';
+}
+
+// Tính ngày dự kiến thu kén: dateOut (dd/mm/yyyy) + 15 ngày → + 20 ngày
+function calcHarvestRange(dateOutStr){
+  if(!dateOutStr)return '—';
+  const d=parseDMY(dateOutStr);
+  if(!d)return '—';
+  const d15=new Date(d); d15.setDate(d15.getDate()+15);
+  const d20=new Date(d); d20.setDate(d20.getDate()+20);
+  const fmt=dt=>`${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
+  return `${fmt(d15)} – ${fmt(d20)}`;
+}
+
+function renderBatches(){
+  const sf=document.getElementById('batch-status-filter').value;
+  let list=DB.batches;
+  if(sf)list=list.filter(b=>lotStatus(b.code)===sf);
+  const rows=list.map((b,i)=>{
+    const bkd=getLotBooked(b.code); const avail=Math.round((b.boxes-bkd)*100)/100;
+    const txtColor=avail<=10?'#8b1a1a':avail<=b.boxes*0.4?'#7a4500':'#0a5c46';
+    const harvest=calcHarvestRange(b.dateOut);
+    return `<tr ondblclick="openEditBatch('${b.code}')" style="cursor:pointer;" title="Nhấp đúp để sửa">
+      <td>${i+1}</td><td style="font-weight:700;">${b.code}</td><td>${b.eggs}</td><td>${b.rate}</td>
+      <td>${b.boxes}</td><td>${b.dateIn}</td><td>${b.dateOut}</td>
+      <td style="color:#185FA5;font-size:12px;font-weight:600;">${harvest}</td>
+      <td>${bkd}</td>
+      <td style="font-weight:700;color:${txtColor};">${avail}</td>
+      <td>${badgeLot(b.code)}</td>
+      <td><button class="btn btn-sm" onclick="event.stopPropagation();deleteBatch('${b.code}')"><i class="ti ti-trash" style="color:#c0392b;"></i></button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('batch-tbl').innerHTML=`<thead><tr>
+    <th>#</th><th>Lô tằm số</th><th>Số bìa trứng</th><th>Tỉ lệ dồn</th><th>Hộp dự kiến</th>
+    <th>Ngày nhập trứng</th><th>Ngày xuất tằm</th>
+    <th style="color:#185FA5;">Ngày dự kiến thu kén</th>
+    <th>Đã đặt</th><th>Còn tồn</th><th>Trạng thái</th><th>Xoá</th>
+  </tr></thead><tbody>${rows||'<tr><td colspan="12" style="text-align:center;padding:20px;color:#999;">Chưa có lô tằm</td></tr>'}</tbody>`;
+}
+function saveBatch(){
+  const code=document.getElementById('b-code').value.trim();
+  const eggs=parseFloat(document.getElementById('b-eggs').value)||0;
+  const rate=parseFloat(document.getElementById('b-rate').value)||0;
+  const boxes=parseFloat(document.getElementById('b-boxes').value)||(eggs&&rate?Math.round(eggs*4*rate*100)/100:0);
+  const dateIn=document.getElementById('b-in').value;
+  const dateOut=document.getElementById('b-out').value;
+  if(!code||!eggs||!rate||!dateIn||!dateOut){showToast('Vui lòng điền đầy đủ!','warn');return;}
+  if(rate<=0||rate>99){showToast('Tỉ lệ dồn phải từ 0.01 đến 99!','warn');return;}
+  if(DB.batches.find(b=>b.code===code)){showToast('Mã lô đã tồn tại! Vui lòng chọn mã khác.','error');return;}
+  DB.batches.push({id:DB.nextId.batch++,code,eggs,rate,boxes,dateIn:fmtDate(dateIn),dateOut:fmtDate(dateOut)});
+  closeModal('modal-batch'); renderBatches(); refreshFilters(); saveDB();
+  showToast(`Đã thêm lô tằm <b>${code}</b> (${boxes} hộp) thành công!`,'success');
+  ['b-code','b-eggs','b-boxes','b-in','b-out'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('b-rate').value=500;
+}
+function fmtDate(s){if(!s)return '';const[y,m,d]=s.split('-');return `${d}/${m}/${y}`;}
+function deleteBatch(code){
+  if(currentUser.role!=='Admin'){showToast('Chỉ Admin mới có quyền xoá lô tằm!','error');return;}
+  if(DB.orders.find(o=>o.lotCode===code)){showToast('Không thể xoá lô đã có đơn đặt!','error');return;}
+  if(!confirm('Xác nhận xoá lô '+code+'?'))return;
+  DB.batches=DB.batches.filter(b=>b.code!==code); saveDB(); renderBatches(); refreshFilters();
+}
+
+function openEditBatch(code){
+  const b=DB.batches.find(x=>x.code===code);
+  if(!b)return;
+  document.getElementById('eb-orig-code').value=code;
+  document.getElementById('eb-code').value=b.code;
+  document.getElementById('eb-eggs').value=b.eggs;
+  document.getElementById('eb-rate').value=b.rate;
+  document.getElementById('eb-boxes').value=b.boxes;
+  // pre-fill dates: convert dd/mm/yyyy → yyyy-mm-dd
+  const toInputDate=s=>{if(!s)return '';const[d,m,y]=s.split('/');return `${y}-${m}-${d}`;};
+  document.getElementById('eb-in').value=toInputDate(b.dateIn);
+  document.getElementById('eb-out').value=toInputDate(b.dateOut);
+  // show harvest preview
+  document.getElementById('eb-harvest-preview').textContent=calcHarvestRange(b.dateOut);
+  // warn if has orders
+  const bkd=getLotBooked(code);
+  const infoBox=document.getElementById('eb-order-info');
+  if(bkd>0){
+    document.getElementById('eb-order-info-text').textContent=
+      `Lô này đã có ${bkd} hộp được đặt. Thay đổi số hộp sẽ không ảnh hưởng đến các đơn đã đặt.`;
+    infoBox.style.display='block';
+  } else {
+    infoBox.style.display='none';
+  }
+  document.getElementById('modal-edit-batch').classList.add('open');
+}
+
+function calcEditBoxes(){
+  const eggs=parseFloat(document.getElementById('eb-eggs').value)||0;
+  const rate=parseFloat(document.getElementById('eb-rate').value)||0;
+  const boxes=eggs&&rate?Math.round(eggs*4*rate*100)/100:0;
+  document.getElementById('eb-boxes').value=boxes||'';
+  const dateOut=document.getElementById('eb-out').value;
+  if(dateOut){
+    const[y,m,d]=dateOut.split('-');
+    document.getElementById('eb-harvest-preview').textContent=calcHarvestRange(`${d}/${m}/${y}`);
+  }
+}
+
+function saveEditBatch(){
+  const origCode=document.getElementById('eb-orig-code').value;
+  const b=DB.batches.find(x=>x.code===origCode);
+  if(!b)return;
+  const newCode=document.getElementById('eb-code').value.trim();
+  const eggs=parseFloat(document.getElementById('eb-eggs').value)||0;
+  const rate=parseFloat(document.getElementById('eb-rate').value)||0;
+  const boxes=parseFloat(document.getElementById('eb-boxes').value)||(eggs&&rate?Math.round(eggs*4*rate*100)/100:0);
+  const dateIn=document.getElementById('eb-in').value;
+  const dateOut=document.getElementById('eb-out').value;
+  if(!newCode||!eggs||!rate||!dateIn||!dateOut){showToast('Vui lòng điền đầy đủ!','warn');return;}
+  if(rate<=0||rate>99){showToast('Tỉ lệ dồn phải từ 0.01 đến 99!','warn');return;}
+  // check code uniqueness (excluding self)
+  if(newCode!==origCode&&DB.batches.find(x=>x.code===newCode)){
+    showToast(`Mã lô "<b>${newCode}</b>" đã tồn tại! Vui lòng chọn mã khác.`,'error');return;
+  }
+  // update batch
+  b.code=newCode; b.eggs=eggs; b.rate=rate; b.boxes=boxes;
+  b.dateIn=fmtDate(dateIn); b.dateOut=fmtDate(dateOut);
+  // if code changed, update orders and transactions
+  if(newCode!==origCode){
+    DB.orders.forEach(o=>{ if(o.lotCode===origCode) o.lotCode=newCode; });
+    DB.transactions.forEach(t=>{ if(t.lotCode===origCode) t.lotCode=newCode; });
+  }
+  closeModal('modal-edit-batch');
+  renderBatches(); refreshFilters(); saveDB();
+  showToast(`Đã cập nhật lô tằm <b>${newCode}</b> thành công!`,'success');
+}
+
+// ============================================================
+// ORDERS
+// ============================================================
+function updateOrdLotInfo(){
+  const code=document.getElementById('o-lot').value;
+  const info=document.getElementById('o-lot-info');
+  if(!code){info.style.display='none';info.textContent='';return;}
+  const avail=getLotAvail(code);
+  const b=DB.batches.find(x=>x.code===code);
+  if(b){
+    info.textContent=`Lô ${code}: tổng ${b.boxes} hộp – đã đặt ${getLotBooked(code)} – còn lại ${getLotAvail(code)} hộp`;
+    info.style.display='block';
+  } else {
+    info.style.display='none';
+  }
+}
+function renderOrders(){
+  const lf=document.getElementById('ord-lot-filter').value;
+  const sf=document.getElementById('ord-sp-filter').value;
+  const df=document.getElementById('ord-date-filter').value;
+  const qRaw=(document.getElementById('ord-cust-search')?.value||'').toLowerCase().trim();
+  const q=qRaw.replace(/\s/g,'');
+  let list=DB.orders;
+  if(lf)list=list.filter(o=>o.lotCode===lf);
+  if(sf)list=list.filter(o=>o.sp===sf);
+  if(df){const fd=fmtDate(df);list=list.filter(o=>o.ts.startsWith(fd));}
+  if(currentUser.role==='Nhân viên')list=list.filter(o=>o.sp===currentUser.sp);
+  // filter by customer name or phone
+  if(q){
+    list=list.filter(o=>{
+      const c=getCustFast(o.custId);
+      return c.name.toLowerCase().includes(qRaw)||
+             (c.phone||'').replace(/\s/g,'').includes(q)||
+             (c.code||'').toLowerCase().includes(qRaw);
+    });
+  }
+
+  // totals (chỉ tính đơn chưa hủy)
+  const activeList=list.filter(o=>o.status!=='Khách hủy');
+  const totalBoxes=activeList.reduce((s,o)=>s+o.boxes,0);
+  const totalAmt=activeList.reduce((s,o)=>s+(o.boxes*(o.price||0)),0);
+  const totalPaid=activeList.reduce((s,o)=>{
+    const manualPaid=o.paid||0;
+    const amt=o.boxes*(o.price||0);
+    const tx=getTxFast(o.custId,o.lotCode);
+    const tienKen=tx?tx.kg*tx.price:0;
+    const remainingDebt=Math.max(0,amt-manualPaid);
+    const kenPaidActual=Math.min(tienKen,remainingDebt);
+    return s+manualPaid+kenPaidActual;
+  },0);
+  const totalDebt=totalAmt-totalPaid;
+
+  const rows=list.map((o,i)=>{
+    const c=getCustFast(o.custId);
+    const cancelled=o.status==='Khách hủy';
+    const cancelInfo=cancelled&&o.cancelTs?`<br><span style="font-size:10px;color:#c0392b;">Hủy: ${o.cancelTs}</span>`:'';
+    const amt=(o.boxes*(o.price||0));
+    const manualPaid=o.paid||0;
+    const tx=getTxFast(o.custId,o.lotCode);
+    const tienKen=tx?tx.kg*tx.price:0;
+    const remainingDebt=Math.max(0,amt-manualPaid);
+    const kenPaidActual=Math.min(tienKen, remainingDebt); // chỉ trả tối đa số còn nợ
+    const paid=manualPaid+kenPaidActual;
+    const debt=amt-paid;
+    const payIcon=o.paymentMethod==='Chuyển khoản'?'🏦':o.paymentMethod==='Tiền mặt + CK'?'🔄':'💵';
+    const debtColor=debt<=0&&amt>0?'#0a5c46':debt>0?'#c0392b':'#999';
+    // Ghi chú: hiển thị tiền kén thực tế đã dùng để trả
+    const paidNote=kenPaidActual>0?`<br><span style="font-size:10px;color:#185FA5;font-style:italic;">Bán kén: +${fmtMoney(kenPaidActual)} đ</span>`:'';
+    // Ghi chú thêm nếu tiền kén < thành tiền (còn thiếu)
+    const kenShortNote=(tienKen>0&&tienKen<remainingDebt)?`<br><span style="font-size:10px;color:#c0392b;font-style:italic;">Kén chỉ đủ ${fmtMoney(tienKen)} đ</span>`:'';
+    return `<tr ondblclick="openEditOrder(${o.id})" style="cursor:pointer;${cancelled?'opacity:0.65;background:#fff5f5;':''}" title="Nhấp đúp để sửa">
+      <td>${i+1}</td><td>${o.ts}</td><td style="color:#666;">${c.code}</td>
+      <td style="font-weight:700;">${c.name}</td><td>${c.phone}</td>
+      <td style="color:#666;">${c.cccd?.slice(0,3)+'...'+c.cccd?.slice(-3)||''}</td>
+      <td><span class="badge b-gray">${o.lotCode}</span></td>
+      <td style="font-weight:700;${cancelled?'text-decoration:line-through;color:#999;':''}">${o.boxes}</td>
+      <td style="color:#555;">${o.price?fmtMoney(o.price):'—'}</td>
+      <td style="font-weight:700;color:#0a5c46;${cancelled?'text-decoration:line-through;color:#999;':''}">${amt?fmtMoney(amt)+' đ':'—'}</td>
+      <td style="font-size:12px;white-space:nowrap;">${payIcon} ${o.paymentMethod||'—'}</td>
+      <td style="color:#185FA5;">${paid?fmtMoney(paid)+' đ':'—'}${paidNote}</td>
+      <td style="font-weight:700;color:${debtColor};">${amt?(debt<=0?'<span class="badge b-green">✓ Đủ</span>':fmtMoney(debt)+' đ'+kenShortNote):'—'}</td>
+      <td>${o.sp}</td>
+      <td>${badgeOrd(o.status)}${cancelInfo}</td>
+      <td>${currentUser.role==='Admin'?`<button class="btn btn-sm" onclick="event.stopPropagation();deleteOrder(${o.id})" title="Xoá đơn"><i class="ti ti-trash" style="color:#c0392b;"></i></button>`:'<span style="color:#ccc;font-size:18px;" title="Chỉ Admin mới xoá được">🔒</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  // tổng dòng cuối
+  const totalRow=list.length?`<tr style="background:#f0f0f0;font-weight:700;border-top:2px solid #999;">
+    <td colspan="7" style="text-align:right;padding:9px 10px;color:#333;">TỔNG CỘNG (${activeList.length} đơn)</td>
+    <td>${totalBoxes}</td>
+    <td></td>
+    <td style="color:#0a5c46;">${totalAmt?fmtMoney(totalAmt)+' đ':'—'}</td>
+    <td></td>
+    <td style="color:#185FA5;">${totalPaid?fmtMoney(totalPaid)+' đ':'—'}</td>
+    <td style="color:${totalDebt>0?'#c0392b':'#0a5c46'};">${totalAmt?fmtMoney(totalDebt)+' đ':'—'}</td>
+    <td colspan="3"></td>
+  </tr>`:'';
+
+  document.getElementById('ord-tbl').innerHTML=`<thead><tr>
+    <th>#</th><th>Ngày giờ đặt</th><th>Mã KH</th><th>Họ và tên</th><th>Điện thoại</th><th>CCCD</th>
+    <th>Lô tằm số</th><th>Hộp đặt</th><th>Đơn giá/hộp</th><th>Thành tiền</th>
+    <th>Thanh toán</th><th>Đã trả</th><th>Còn nợ</th>
+    <th>Điểm bán</th><th>Trạng thái</th><th>Xoá</th>
+  </tr></thead><tbody>${rows||'<tr><td colspan="16" style="text-align:center;padding:20px;color:#999;">Không có đơn nào</td></tr>'}${totalRow}</tbody>`;
+
+}
+// ============================================================
+// SEARCHABLE CUSTOMER IN ORDER MODAL
+// ============================================================
+function getOrderCustList(){
+  let list=DB.customers;
+  if(currentUser.role==='Nhân viên') list=list.filter(c=>c.sp===currentUser.sp);
+  return list;
+}
+function showOrderCustDropdown(){
+  filterOrderCusts();
+  document.getElementById('o-cust-dropdown').style.display='block';
+}
+function filterOrderCusts(){
+  const q=(document.getElementById('o-cust-search').value||'').toLowerCase().trim();
+  const list=getOrderCustList().filter(c=>
+    !q || c.name.toLowerCase().includes(q) || c.phone.replace(/\s/g,'').includes(q.replace(/\s/g,'')) || c.code.toLowerCase().includes(q)
+  );
+  const dd=document.getElementById('o-cust-dropdown');
+  if(!list.length){
+    dd.innerHTML='<div style="padding:10px 12px;color:#999;font-size:13px;">Không tìm thấy khách hàng</div>';
+  } else {
+    dd.innerHTML=list.map(c=>`
+      <div onclick="selectOrderCust(${c.id},'${c.code}','${c.name.replace(/'/g,"\\'")}','${c.phone}')"
+        style="padding:10px 12px;cursor:pointer;border-bottom:1px solid #eee;font-size:13px;"
+        onmouseover="this.style.background='#e8f7f2'" onmouseout="this.style.background=''">
+        <div style="font-weight:700;">${c.name} <span style="color:#888;font-weight:400;font-size:11px;">${c.code}</span></div>
+        <div style="color:#666;font-size:12px;">${c.phone} ${c.addr?'· '+c.addr:''}</div>
+      </div>`).join('');
+  }
+  dd.style.display='block';
+}
+function selectOrderCust(id,code,name,phone){
+  document.getElementById('o-cust').value=id;
+  document.getElementById('o-cust-search').value=name+' ('+phone+')';
+  document.getElementById('o-cust-selected-label').textContent='✓ '+code;
+  document.getElementById('o-cust-dropdown').style.display='none';
+}
+// Close dropdown when clicking outside
+document.addEventListener('click',function(e){
+  const wrap=document.querySelector('#modal-order [style*="position:relative"]');
+  if(wrap&&!wrap.contains(e.target)){
+    const dd=document.getElementById('o-cust-dropdown');
+    if(dd) dd.style.display='none';
+  }
+});
+
+function calcOrderTotal(){
+  const boxes=parseFloat(document.getElementById('o-boxes').value)||0;
+  const price=parseFloat(document.getElementById('o-price').value)||0;
+  const wrap=document.getElementById('o-total-wrap');
+  const disp=document.getElementById('o-total-display');
+  if(boxes&&price){
+    disp.textContent=fmtMoney(boxes*price)+' đ';
+    wrap.style.display='block';
+  } else {
+    wrap.style.display='none';
+  }
+  calcOrderDebt();
+}
+function calcOrderDebt(){
+  const boxes=parseFloat(document.getElementById('o-boxes').value)||0;
+  const price=parseFloat(document.getElementById('o-price').value)||0;
+  const paid=parseFloat(document.getElementById('o-paid').value)||0;
+  const total=boxes*price;
+  const debtEl=document.getElementById('o-debt');
+  if(total>0){
+    const debt=total-paid;
+    debtEl.value=fmtMoney(debt)+' đ';
+    debtEl.style.color=debt>0?'#c0392b':debt===0?'#0a5c46':'#185FA5';
+  } else {
+    debtEl.value='—';
+    debtEl.style.color='#999';
+  }
+}
+function saveOrder(){
+  const custId=parseInt(document.getElementById('o-cust').value);
+  const lotCode=document.getElementById('o-lot').value;
+  const boxes=parseFloat(parseFloat(document.getElementById('o-boxes').value||0).toFixed(2));
+  const price=parseFloat(document.getElementById('o-price').value)||0;
+  const sp=document.getElementById('o-sp').value;
+  const note=document.getElementById('o-note').value.trim();
+  const paymentMethod=document.querySelector('input[name="o-payment"]:checked')?.value||'Tiền mặt';
+  const paid=parseFloat(document.getElementById('o-paid').value)||0;
+  if(!custId||!lotCode||!boxes||!sp){showToast('Vui lòng điền đầy đủ!','warn');return;}
+
+  // Kiểm tra đơn cùng khách + cùng lô đã tồn tại (status != Khách hủy)
+  const existing=DB.orders.find(o=>o.custId===custId&&o.lotCode===lotCode&&o.status!=='Khách hủy');
+  if(existing){
+    // Kiểm tra tồn kho chỉ cho số hộp thêm
+    const addBoxes=boxes;
+    const avail=getLotAvail(lotCode);
+    if(addBoxes>avail){showToast(`Lô ${lotCode} chỉ còn <b>${avail} hộp</b>! Không đủ để đặt thêm.`,'error');return;}
+    // Cộng thêm vào đơn cũ
+    const oldBoxes=existing.boxes;
+    existing.boxes=Math.round((existing.boxes+addBoxes)*100)/100;
+    existing.paid=(existing.paid||0)+paid;
+    if(price) existing.price=price; // cập nhật đơn giá nếu nhập mới
+    if(paymentMethod) existing.paymentMethod=paymentMethod;
+    existing.ts=parseDatetimeLocal(document.getElementById('o-date').value); // ngày giờ từ form
+    closeModal('modal-order'); renderOrders(); refreshFilters(); saveDB();
+    const cname=getCust(custId).name||'';
+    showToast(`Đã cộng thêm <b>${addBoxes} hộp</b> vào đơn của <b>${cname}</b> (${oldBoxes} → ${existing.boxes} hộp)`, 'success');
+    ['o-boxes','o-note','o-price','o-paid'].forEach(x=>document.getElementById(x).value='');
+    return;
+  }
+
+  // Đơn mới hoàn toàn
+  const avail=getLotAvail(lotCode);
+  if(boxes>avail){showToast(`Lô ${lotCode} chỉ còn <b>${avail} hộp</b>! Số hộp đặt vượt quá tồn kho.`,'error');return;}
+  const ts=parseDatetimeLocal(document.getElementById('o-date').value);
+  DB.orders.push({id:DB.nextId.order++,ts,custId,lotCode,boxes,price,paymentMethod,paid,sp,status:'Xác nhận',note});
+  closeModal('modal-order'); renderOrders(); refreshFilters(); saveDB();
+  const cname=getCust(custId).name||'';
+  showToast(`Đã tạo đơn đặt cho <b>${cname}</b> — ${boxes} hộp lô ${lotCode}!`,'success');
+  ['o-boxes','o-note','o-price','o-paid'].forEach(x=>document.getElementById(x).value='');
+}
+function deleteOrder(id){
+  if(currentUser.role!=='Admin'){showToast('Chỉ Admin mới có quyền xoá đơn đặt!','error');return;}
+  if(!confirm('Xác nhận xoá đơn đặt này?'))return;
+  DB.orders=DB.orders.filter(o=>o.id!==id); saveDB(); renderOrders();
+}
+
+// ============================================================
+// TRANSACTIONS
+// ============================================================
+let txEligible=[]; // eligible orders for this modal session
+
+function openTxModal(){
+  // Build eligible orders: Xác nhận, not yet sold, filtered by user
+  let ordPool=DB.orders.filter(o=>o.status==='Xác nhận');
+  if(currentUser.role==='Nhân viên') ordPool=ordPool.filter(o=>o.sp===currentUser.sp);
+  txEligible=ordPool.filter(o=>!DB.transactions.some(t=>t.custId===o.custId&&t.lotCode===o.lotCode));
+
+  // Populate lot filter: only lots that have eligible orders AND harvest end date >= today
+  const today=new Date(); today.setHours(0,0,0,0);
+  const lotCodes=[...new Set(txEligible.map(o=>o.lotCode))].filter(code=>{
+    const b=DB.batches.find(x=>x.code===code);
+    if(!b)return false;
+    const out=parseDMY(b.dateOut);
+    if(!out)return false;
+    const harvestEnd=new Date(out);
+    harvestEnd.setDate(harvestEnd.getDate()+20);
+    harvestEnd.setHours(0,0,0,0);
+    return harvestEnd>=today;
+  });
+  const sel=document.getElementById('tx-lot-filter-modal');
+  sel.innerHTML='<option value="">Tất cả lô đang thu kén</option>'+
+    lotCodes.map(code=>{
+      const b=DB.batches.find(x=>x.code===code);
+      return `<option value="${code}">${code}${b?' – thu kén: '+calcHarvestRange(b.dateOut):''}</option>`;
+    }).join('');
+
+  // Reset fields
+  document.getElementById('tx-cust-search').value='';
+  document.getElementById('tx-cust').value='';
+  document.getElementById('tx-cust-label').textContent='';
+  document.getElementById('tx-cust-dropdown').style.display='none';
+  document.getElementById('tx-cust-info').style.display='none';
+  document.getElementById('tx-kg').value='';
+  document.getElementById('tx-price').value='';
+  document.getElementById('tx-total').value='';
+  document.getElementById('modal-tx').classList.add('open');
+}
+
+function getTxEligibleFiltered(){
+  const lotF=document.getElementById('tx-lot-filter-modal').value;
+  return txEligible.filter(o=>!lotF||o.lotCode===lotF);
+}
+
+function showTxCustDropdown(){
+  filterTxCusts();
+  document.getElementById('tx-cust-dropdown').style.display='block';
+}
+
+function filterTxCusts(){
+  const q=(document.getElementById('tx-cust-search').value||'').toLowerCase().trim();
+  const pool=getTxEligibleFiltered();
+  const filtered=pool.filter(o=>{
+    const c=getCust(o.custId);
+    return !q||c.name.toLowerCase().includes(q)||(c.phone||'').replace(/\s/g,'').includes(q.replace(/\s/g,''))||(c.code||'').toLowerCase().includes(q);
+  });
+  const dd=document.getElementById('tx-cust-dropdown');
+  if(!filtered.length){
+    dd.innerHTML='<div style="padding:10px 12px;color:#999;font-size:13px;">Không tìm thấy khách hàng phù hợp</div>';
+  } else {
+    dd.innerHTML=filtered.map(o=>{
+      const c=getCust(o.custId);
+      return `<div onclick="selectTxCust(${o.id})"
+        style="padding:10px 12px;cursor:pointer;border-bottom:1px solid #eee;font-size:13px;"
+        onmouseover="this.style.background='#e8f7f2'" onmouseout="this.style.background=''">
+        <div style="font-weight:700;">${c.name} <span style="color:#888;font-weight:400;font-size:11px;">${c.code}</span></div>
+        <div style="color:#666;font-size:12px;">${c.phone} · Lô <b>${o.lotCode}</b> · ${o.boxes} hộp</div>
+      </div>`;
+    }).join('');
+  }
+  dd.style.display='block';
+}
+
+function selectTxCust(ordId){
+  const o=DB.orders.find(x=>x.id===ordId);
+  if(!o)return;
+  const c=getCust(o.custId);
+  document.getElementById('tx-cust').value=ordId;
+  document.getElementById('tx-cust-search').value=`${c.name} (${c.phone})`;
+  document.getElementById('tx-cust-label').textContent=`✓ ${c.code} | Lô ${o.lotCode}`;
+  document.getElementById('tx-cust-dropdown').style.display='none';
+  // show info panel
+  const info=document.getElementById('tx-cust-info');
+  const tienTam=o.boxes*(o.price||0);
+  const paid=o.paid||0;
+  info.innerHTML=`<i class="ti ti-info-circle"></i>
+    <b>${c.name}</b> | Lô: <b>${o.lotCode}</b> | Hộp đặt: <b>${o.boxes}</b>
+    ${o.price?`| Tiền tằm: <b>${fmtMoney(Math.max(0,tienTam-paid))} đ</b>${paid?` (đã trả ${fmtMoney(paid)} đ)`:''}` :''}`;
+  info.style.display='block';
+}
+
+// Close tx dropdown on outside click
+document.addEventListener('click',function(e){
+  const wrap=document.querySelector('#modal-tx [style*="position:relative"]');
+  if(wrap&&!wrap.contains(e.target)){
+    const dd=document.getElementById('tx-cust-dropdown');
+    if(dd) dd.style.display='none';
+  }
+});
+
+function onTxCustChange(){} // kept for compatibility
+
+function calcTx(){
+  const kg=parseFloat(document.getElementById('tx-kg').value)||0;
+  const price=parseFloat(document.getElementById('tx-price').value)||0;
+  document.getElementById('tx-total').value=kg&&price?fmtMoney(kg*price)+' đ':'';
+}
+function saveTx(){
+  const ordId=parseInt(document.getElementById('tx-cust').value);
+  const kg=parseFloat(document.getElementById('tx-kg').value)||0;
+  const price=parseFloat(document.getElementById('tx-price').value)||0;
+  if(!ordId||!kg||!price){showToast('Vui lòng điền đầy đủ!','warn');return;}
+  const ord=DB.orders.find(o=>o.id===ordId);
+  if(!ord){showToast('Không tìm thấy đơn đặt!','error');return;}
+  DB.transactions.push({id:DB.nextId.tx++,ts:nowTs(),custId:ord.custId,lotCode:ord.lotCode,boxes:ord.boxes,kg,price});
+  closeModal('modal-tx'); renderTx(); saveDB();
+  showToast(`Đã chốt giao dịch: ${kg}kg kén — ${fmtMoney(kg*price)} đ`,'success');
+}
+function renderTx(){
+  const lf=document.getElementById('tx-lot-filter').value;
+  const spfEl=document.getElementById('tx-sp-filter');
+  const spf=spfEl?spfEl.value:'';
+  const sq=(document.getElementById('tx-search')?.value||'').toLowerCase().trim();
+  let list=DB.transactions;
+  if(lf)list=list.filter(t=>t.lotCode===lf);
+  if(currentUser.role==='Nhân viên'){
+    const myOrdIds=DB.orders.filter(o=>o.sp===currentUser.sp).map(o=>({custId:o.custId,lotCode:o.lotCode}));
+    list=list.filter(t=>myOrdIds.some(x=>x.custId===t.custId&&x.lotCode===t.lotCode));
+  }
+  // Lọc theo điểm bán (Admin/Quản Lý)
+  if(spf){
+    list=list.filter(t=>{
+      const ord=getOrdFast(t.custId,t.lotCode);
+      return ord&&ord.sp===spf;
+    });
+  }
+  // Tìm kiếm theo tên / SĐT
+  if(sq){
+    list=list.filter(t=>{
+      const c=getCustFast(t.custId);
+      return (c.name||'').toLowerCase().includes(sq)||(c.phone||'').includes(sq);
+    });
+  }
+  const rows=list.map((t,i)=>{
+    const c=getCustFast(t.custId);
+    const ord=getOrdFast(t.custId,t.lotCode);
+    const ordPrice=ord?ord.price||0:0;
+    const manualPaid=ord?ord.paid||0:0;
+    const tienKen=t.kg*t.price;
+    const tienTamGoc=t.boxes*ordPrice;
+    const tienTam=Math.max(0,tienTamGoc-manualPaid);
+    const thanhToan=tienKen-tienTam;
+    const thanhToanColor=thanhToan>=0?'#0a5c46':'#c0392b';
+    const tienTamNote=manualPaid>0?`<br><span style="font-size:10px;color:#888;font-style:italic;">Đã trả: ${fmtMoney(manualPaid)} đ</span>`:'';
+    const spName=ord?ord.sp:'—';
+    return `<tr>
+      <td>${i+1}</td><td>${t.ts}</td>
+      <td style="color:#666;">${c.code}</td>
+      <td style="font-weight:700;">${c.name}</td>
+      <td>${c.phone}</td>
+      <td><span class="badge b-gray">${t.lotCode}</span></td>
+      <td>${t.boxes}</td>
+      <td style="font-weight:700;">${t.kg}</td>
+      <td>${fmtMoney(t.price)}</td>
+      <td style="font-weight:700;color:#185FA5;">${fmtMoney(tienKen)} đ</td>
+      <td style="color:#555;">${ordPrice?fmtMoney(ordPrice)+' đ/hộp':'—'}</td>
+      <td style="font-weight:700;color:#7a4500;">${tienTamGoc?fmtMoney(tienTam)+' đ':'—'}${tienTamNote}</td>
+      <td style="font-weight:700;color:${thanhToanColor};">${(tienKen||tienTam)?fmtMoney(thanhToan)+' đ':'—'}</td>
+      <td><span class="badge b-gray" style="font-size:11px;">${spName}</span></td>
+      <td>${currentUser.role==='Admin'?`<button class="btn btn-sm" onclick="deleteTx(${t.id})"><i class="ti ti-trash" style="color:#c0392b;"></i></button>`:'<span style="color:#ccc;font-size:16px;" title="Chỉ Admin xoá">🔒</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  // Tổng cuối bảng
+  const totKen=list.reduce((s,t)=>s+t.kg*t.price,0);
+  const totKg=Math.round(list.reduce((s,t)=>s+t.kg,0)*100)/100;
+  const totTam=list.reduce((s,t)=>{
+    const ord=getOrdFast(t.custId,t.lotCode);
+    const tienTamGoc=t.boxes*(ord?ord.price||0:0);
+    const manualPaid=ord?ord.paid||0:0;
+    return s+Math.max(0,tienTamGoc-manualPaid);
+  },0);
+  const totThanhToan=totKen-totTam;
+  const totalRow=list.length?`<tr style="background:#f0f7f4;font-weight:700;border-top:2px solid #7dccb0;">
+    <td colspan="7" style="text-align:right;padding:9px 10px;color:#333;">TỔNG CỘNG (${list.length} giao dịch)</td>
+    <td style="color:#0a5c46;">${totKg} kg</td>
+    <td></td>
+    <td style="color:#185FA5;">${fmtMoney(totKen)} đ</td>
+    <td></td>
+    <td style="color:#7a4500;">${fmtMoney(totTam)} đ</td>
+    <td style="color:${totThanhToan>=0?'#0a5c46':'#c0392b'};">${fmtMoney(totThanhToan)} đ</td>
+    <td colspan="2"></td>
+  </tr>`:'';
+
+  document.getElementById('tx-tbl').innerHTML=`<thead><tr>
+    <th>#</th><th>Ngày giờ bán</th><th>Mã KH</th><th>Họ và tên</th><th>Điện thoại</th>
+    <th>Lô tằm số</th><th>Hộp đặt</th><th>KL kén (kg)</th><th>Giá kén (đ/kg)</th>
+    <th style="color:#185FA5;">Tiền kén</th>
+    <th>Đơn giá/hộp</th>
+    <th style="color:#7a4500;">Tiền tằm</th>
+    <th style="color:#0a5c46;">Thanh toán</th>
+    <th>Điểm bán</th>
+    <th>Xoá</th>
+  </tr></thead><tbody>${rows||'<tr><td colspan="15" style="text-align:center;padding:20px;color:#999;">Chưa có giao dịch</td></tr>'}${totalRow}</tbody>`;
+}
+function deleteTx(id){
+  if(currentUser.role!=='Admin'){showToast('Chỉ Admin mới có quyền xoá giao dịch!','error');return;}
+  if(!confirm('Xác nhận xoá giao dịch?'))return;
+  DB.transactions=DB.transactions.filter(t=>t.id!==id); saveDB(); renderTx();
+}
+function getTxFilteredList(){
+  const lf=document.getElementById('tx-lot-filter').value;
+  const spfEl=document.getElementById('tx-sp-filter');
+  const spf=spfEl?spfEl.value:'';
+  const sq=(document.getElementById('tx-search')?.value||'').toLowerCase().trim();
+  let list=DB.transactions;
+  if(lf)list=list.filter(t=>t.lotCode===lf);
+  if(currentUser.role==='Nhân viên'){
+    const myOrdIds=DB.orders.filter(o=>o.sp===currentUser.sp).map(o=>({custId:o.custId,lotCode:o.lotCode}));
+    list=list.filter(t=>myOrdIds.some(x=>x.custId===t.custId&&x.lotCode===t.lotCode));
+  }
+  if(spf){list=list.filter(t=>{const ord=getOrdFast(t.custId,t.lotCode);return ord&&ord.sp===spf;});}
+  if(sq){list=list.filter(t=>{const c=getCustFast(t.custId);return (c.name||'').toLowerCase().includes(sq)||(c.phone||'').includes(sq);});}
+  return list;
+}
+function printTx(){
+  const list=getTxFilteredList();
+  const lf=document.getElementById('tx-lot-filter').value||'Tất cả lô';
+  const spf=(document.getElementById('tx-sp-filter')?.value)||'Tất cả điểm bán';
+  const rows=list.map((t,i)=>{
+    const c=getCustFast(t.custId);
+    const ord=getOrdFast(t.custId,t.lotCode);
+    const ordPrice=ord?ord.price||0:0;
+    const tienKen=t.kg*t.price;
+    const manualPaid=ord?ord.paid||0:0;
+    const tienTam=Math.max(0,t.boxes*ordPrice-manualPaid);
+    const thanhToan=tienKen-tienTam;
+    const spName=ord?ord.sp:'—';
+    return `<tr><td>${i+1}</td><td>${t.ts}</td><td>${c.code}</td><td>${c.name}</td><td>${c.phone}</td>
+      <td>${t.lotCode}</td><td>${t.boxes}</td><td>${t.kg}</td><td>${fmtMoney(t.price)}</td>
+      <td>${fmtMoney(tienKen)}</td><td>${ordPrice?fmtMoney(ordPrice):''}</td>
+      <td>${tienKen||tienTam?fmtMoney(tienTam):''}</td>
+      <td>${tienKen||tienTam?fmtMoney(thanhToan):''}</td><td>${spName}</td></tr>`;
+  }).join('');
+  const totKen=list.reduce((s,t)=>s+t.kg*t.price,0);
+  const totKg=Math.round(list.reduce((s,t)=>s+t.kg,0)*100)/100;
+  const totTam=list.reduce((s,t)=>{const ord=DB.orders.find(o=>o.custId===t.custId&&o.lotCode===t.lotCode);return s+Math.max(0,t.boxes*(ord?ord.price||0:0)-(ord?ord.paid||0:0));},0);
+  const win=window.open('','_blank');
+  win.document.write(`<html><head><title>Bán kén - ${lf}</title>
+  <style>body{font-family:Arial,sans-serif;font-size:12px;}table{border-collapse:collapse;width:100%;}
+  th,td{border:1px solid #ccc;padding:5px 7px;}th{background:#e8f7f2;}
+  .tfoot td{background:#f0f7f4;font-weight:700;}
+  h2{color:#0a5c46;margin-bottom:4px;}p{color:#555;font-size:11px;margin:2px 0 10px;}
+  @media print{button{display:none;}}</style></head><body>
+  <h2>Bán kén / Thu tiền tằm</h2>
+  <p>Lô: ${lf} | Điểm bán: ${spf} | In lúc: ${nowTs()} | Người in: ${currentUser.name}</p>
+  <table><thead><tr><th>#</th><th>Ngày giờ bán</th><th>Mã KH</th><th>Họ và tên</th><th>Điện thoại</th>
+  <th>Lô</th><th>Hộp đặt</th><th>KL kén (kg)</th><th>Giá kén</th><th>Tiền kén</th>
+  <th>ĐG/hộp</th><th>Tiền tằm</th><th>Thanh toán</th><th>Điểm bán</th></tr></thead>
+  <tbody>${rows}</tbody>
+  <tfoot><tr class="tfoot"><td colspan="7" style="text-align:right;">TỔNG CỘNG (${list.length} GD)</td>
+  <td>${totKg} kg</td><td></td><td>${fmtMoney(totKen)} đ</td><td></td>
+  <td>${fmtMoney(totTam)} đ</td><td>${fmtMoney(totKen-totTam)} đ</td><td></td></tr></tfoot>
+  </table><script>window.onload=()=>{window.print();}<'+'/script></body></html>`);
+  win.document.close();
+}
+// CSV helpers: số/text thường, số điện thoại/CCCD giữ số 0
+function csvVal(v){ return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'; }
+function csvPhone(v){ const s=String(v==null?'':v).trim(); return s?'="'+s+'"':'""'; }
+
+function exportTxExcel(){
+  const list=getTxFilteredList();
+  const lf=document.getElementById('tx-lot-filter').value||'TatCaLo';
+  const headers=['#','Ngày giờ bán','Mã KH','Họ và tên','Điện thoại','Lô tằm số','Hộp đặt','KL kén (kg)','Giá kén (đ/kg)','Tiền kén','Đơn giá/hộp','Tiền tằm','Thanh toán','Điểm bán'];
+  const rows=list.map((t,i)=>{
+    const c=getCustFast(t.custId);
+    const ord=getOrdFast(t.custId,t.lotCode);
+    const ordPrice=ord?ord.price||0:0;
+    const tienKen=t.kg*t.price;
+    const tienTam=Math.max(0,t.boxes*ordPrice-(ord?ord.paid||0:0));
+    return [
+      csvVal(i+1), csvVal(t.ts), csvVal(c.code), csvVal(c.name),
+      csvPhone(c.phone),
+      csvVal(t.lotCode), csvVal(t.boxes), csvVal(t.kg), csvVal(t.price),
+      csvVal(tienKen), csvVal(ordPrice), csvVal(tienTam), csvVal(tienKen-tienTam),
+      csvVal(ord?ord.sp:'')
+    ].join(',');
+  });
+  const totKen=list.reduce((s,t)=>s+t.kg*t.price,0);
+  const totKg=Math.round(list.reduce((s,t)=>s+t.kg,0)*100)/100;
+  const totTam=list.reduce((s,t)=>{const ord=DB.orders.find(o=>o.custId===t.custId&&o.lotCode===t.lotCode);return s+Math.max(0,t.boxes*(ord?ord.price||0:0)-(ord?ord.paid||0:0));},0);
+  rows.push([`"TỔNG CỘNG (${list.length} GD)"`, '', '', '', '', '', '', `"${totKg} kg"`, '', `"${totKen}"`, '', `"${totTam}"`, `"${totKen-totTam}"`, ''].join(','));
+  const csv='\uFEFF'+[headers.map(h=>`"${h}"`).join(','),...rows].join('\n');
+  const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=`BanKen_${lf}_${new Date().toLocaleDateString('vi')}.csv`; a.click();
+  showToast('Đã xuất Excel thành công!','success');
+}
+
+// ============================================================
+// EDIT USER (double-click)
+// ============================================================
+function openEditUser(id){
+  const u=DB.users.find(x=>x.id===id);
+  if(!u)return;
+  document.getElementById('eu-id').value=u.id;
+  document.getElementById('eu-name').value=u.name;
+  document.getElementById('eu-phone').value=u.phone;
+  document.getElementById('eu-login').value=u.login;
+  document.getElementById('eu-pass').value='';
+  document.getElementById('eu-role').value=u.role;
+  // populate sp list
+  const sel=document.getElementById('eu-sp');
+  sel.innerHTML='<option value="">-- Chọn điểm --</option>'+DB.salespoints.map(s=>`<option${s.name===u.sp?' selected':''}>${s.name}</option>`).join('');
+  toggleEditSpField();
+  document.getElementById('modal-edit-user').classList.add('open');
+}
+function toggleEditSpField(){
+  const r=document.getElementById('eu-role').value;
+  document.getElementById('eu-sp-wrap').style.display=(r==='Admin'||r==='Quản Lý')?'none':'';
+}
+function saveEditUser(){
+  const id=parseInt(document.getElementById('eu-id').value);
+  const u=DB.users.find(x=>x.id===id);
+  if(!u)return;
+  const name=document.getElementById('eu-name').value.trim();
+  const phone=document.getElementById('eu-phone').value.trim();
+  const login=document.getElementById('eu-login').value.trim();
+  const pass=document.getElementById('eu-pass').value;
+  const role=document.getElementById('eu-role').value;
+  const sp=document.getElementById('eu-sp').value;
+  if(!name||!phone||!login){showToast('Vui lòng điền đầy đủ Tên, SĐT, Tên đăng nhập!','warn');return;}
+  if(DB.users.find(x=>x.login===login&&x.id!==id)){showToast(`Tên đăng nhập "<b>${login}</b>" đã tồn tại! Vui lòng chọn tên khác.`,'error');return;}
+  if(pass&&pass.length<6){showToast('Mật khẩu phải ít nhất 6 ký tự!','warn');return;}
+  u.name=name; u.phone=phone; u.login=login; u.role=role;
+  u.sp=(role==='Admin'||role==='Quản Lý')?'Tất cả':sp;
+  if(pass)u.pass=pass;
+  closeModal('modal-edit-user');
+  renderUsers(); saveDB();
+  showToast('Đã cập nhật thông tin user thành công!','success');
+  // update topbar if editing self
+  if(currentUser.id===id){
+    currentUser=u;
+    document.getElementById('top-name').textContent=u.name;
+    document.getElementById('top-avatar').textContent=u.name.split(' ').map(w=>w[0]).slice(-2).join('').toUpperCase();
+  }
+}
+
+// ============================================================
+// EDIT SALESPOINT (double-click)
+// ============================================================
+function openEditSP(id){
+  const s=DB.salespoints.find(x=>x.id===id);
+  if(!s)return;
+  document.getElementById('esp-id').value=s.id;
+  document.getElementById('esp-name').value=s.name;
+  document.getElementById('esp-addr').value=s.addr;
+  const sel=document.getElementById('esp-user');
+  sel.innerHTML='<option value="">-- Chọn user --</option>'+DB.users.filter(u=>u.role==='Nhân viên').map(u=>`<option${u.name===s.user?' selected':''}>${u.name}</option>`).join('');
+  document.getElementById('modal-edit-sp').classList.add('open');
+}
+function saveEditSP(){
+  const id=parseInt(document.getElementById('esp-id').value);
+  const s=DB.salespoints.find(x=>x.id===id);
+  if(!s)return;
+  const name=document.getElementById('esp-name').value.trim();
+  const user=document.getElementById('esp-user').value;
+  const addr=document.getElementById('esp-addr').value.trim();
+  if(!name||!addr){showToast('Vui lòng điền Tên và Địa điểm!','warn');return;}
+  s.name=name; s.user=user; s.addr=addr;
+  closeModal('modal-edit-sp');
+  renderSP(); refreshFilters(); saveDB();
+  showToast('Đã cập nhật thông tin điểm bán thành công!','success');
+}
+
+// ============================================================
+// EDIT ORDER (double-click)
+// ============================================================
+function openEditOrder(id){
+  const o=DB.orders.find(x=>x.id===id);
+  if(!o)return;
+  const c=getCust(o.custId);
+  document.getElementById('eo-id').value=o.id;
+  document.getElementById('eo-cust-info').textContent=`${c.code} – ${c.name}`;
+  document.getElementById('eo-lot-info').textContent=o.lotCode;
+  document.getElementById('eo-sp-info').textContent=o.sp;
+  document.getElementById('eo-ts-info').textContent=o.ts;
+  const amt=o.boxes*(o.price||0);
+  document.getElementById('eo-amt-info').textContent=o.price?`${fmtMoney(o.price)} đ/hộp → ${fmtMoney(amt)} đ`:'Chưa có đơn giá';
+  // editable fields
+  document.getElementById('eo-boxes').value=o.boxes;
+  document.getElementById('eo-status').value=o.status;
+  document.getElementById('eo-note').value=o.note||'';
+  document.getElementById('eo-cancel-reason').value=o.cancelReason||'';
+  document.getElementById('eo-unsold-reason').value=o.unsoldReason||'';
+  document.getElementById('eo-paid').value=o.paid||'';
+  // payment method radio
+  const pm=o.paymentMethod||'Tiền mặt';
+  const radio=document.querySelector(`input[name="eo-payment"][value="${pm}"]`);
+  if(radio) radio.checked=true;
+  else document.querySelector('input[name="eo-payment"]').checked=true;
+  calcEditOrderDebt();
+  // cancel time
+  if(o.cancelTs){
+    const[datePart,timePart]=o.cancelTs.split(' ');
+    const[dd,mm,yyyy]=datePart.split('/');
+    document.getElementById('eo-cancel-ts').value=`${yyyy}-${mm}-${dd}T${timePart}`;
+  } else {
+    const now=new Date();
+    const pad=n=>String(n).padStart(2,'0');
+    document.getElementById('eo-cancel-ts').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  }
+  toggleCancelFields();
+  document.getElementById('modal-edit-order').classList.add('open');
+}
+
+function calcEditOrderDebt(){
+  const id=parseInt(document.getElementById('eo-id').value);
+  const o=DB.orders.find(x=>x.id===id);
+  const boxes=parseFloat(document.getElementById('eo-boxes').value)||0;
+  const price=o?o.price||0:0;
+  const paid=parseFloat(document.getElementById('eo-paid').value)||0;
+  const total=boxes*price;
+  const debtEl=document.getElementById('eo-debt');
+  if(total>0){
+    const debt=total-paid;
+    debtEl.value=fmtMoney(debt)+' đ';
+    debtEl.style.color=debt>0?'#c0392b':debt===0?'#0a5c46':'#185FA5';
+  } else {
+    debtEl.value='—';
+    debtEl.style.color='#999';
+  }
+}
+function toggleCancelFields(){
+  const status=document.getElementById('eo-status').value;
+  const isCancelled=status==='Khách hủy';
+  const isConfirmed=status==='Xác nhận';
+  document.getElementById('eo-cancel-wrap').style.display=isCancelled?'':'none';
+  document.getElementById('eo-cancel-reason-wrap').style.display=isCancelled?'':'none';
+  document.getElementById('eo-unsold-reason-wrap').style.display=isConfirmed?'':'none';
+}
+function saveEditOrder(){
+  const id=parseInt(document.getElementById('eo-id').value);
+  const o=DB.orders.find(x=>x.id===id);
+  if(!o)return;
+  const newBoxes=parseFloat(parseFloat(document.getElementById('eo-boxes').value||o.boxes).toFixed(2));
+  const status=document.getElementById('eo-status').value;
+  const note=document.getElementById('eo-note').value.trim();
+  const cancelReason=document.getElementById('eo-cancel-reason').value.trim();
+  const unsoldReason=document.getElementById('eo-unsold-reason').value;
+  const paymentMethod=document.querySelector('input[name="eo-payment"]:checked')?.value||o.paymentMethod||'Tiền mặt';
+  const paid=parseFloat(document.getElementById('eo-paid').value)||0;
+  let cancelTs='';
+  if(status==='Khách hủy'){
+    const raw=document.getElementById('eo-cancel-ts').value;
+    if(!raw){showToast('Vui lòng nhập thời gian hủy!','warn');return;}
+    const[datePart,timePart]=raw.split('T');
+    const[yyyy,mm,dd]=datePart.split('-');
+    cancelTs=`${dd}/${mm}/${yyyy} ${timePart}`;
+  }
+  // validate boxes: if increasing, check avail
+  if(newBoxes>o.boxes&&status!=='Khách hủy'){
+    const extraNeeded=Math.round((newBoxes-o.boxes)*100)/100;
+    const avail=getLotAvail(o.lotCode);
+    if(extraNeeded>avail){showToast(`Lô ${o.lotCode} chỉ còn <b>${avail} hộp</b>! Không thể tăng số hộp.`,'error');return;}
+  }
+  o.boxes=newBoxes;
+  o.status=status;
+  o.note=note;
+  o.cancelTs=cancelTs;
+  o.cancelReason=cancelReason;
+  o.unsoldReason=status==='Xác nhận'?unsoldReason:'';
+  o.paymentMethod=paymentMethod;
+  o.paid=paid;
+  closeModal('modal-edit-order');
+  renderOrders(); saveDB();
+  showToast('Đã cập nhật đơn đặt thành công!','success');
+  if(document.getElementById('pg-dashboard').style.display!=='none') renderDashboard();
+}
+
+
+
+// ============================================================
+// IN & XUẤT EXCEL BÁO CÁO
+// ============================================================
+function printReport(){
+  const isNX = rptTab === 'nangxuat';
+  const title = isNX
+    ? 'Xếp hạng năng suất nuôi tằm – Kén tằm Hồng Hà'
+    : 'Báo cáo & Thống kê – Kén tằm Hồng Hà';
+  let tableHTML = '';
+  if(isNX){
+    const panel = document.getElementById('rpt-nangxuat-panel');
+    const tbl = panel ? panel.querySelector('table') : null;
+    tableHTML = tbl ? tbl.outerHTML : '<p>Chưa có dữ liệu</p>';
+  } else {
+    const tbl = document.getElementById('rpt-tbl');
+    tableHTML = tbl ? tbl.outerHTML : '<p>Chưa có dữ liệu</p>';
+  }
+  const filterInfo = [
+    document.getElementById('rpt-from')?.value ? 'Từ: '+document.getElementById('rpt-from').value : '',
+    document.getElementById('rpt-to')?.value   ? 'Đến: '+document.getElementById('rpt-to').value : '',
+    document.getElementById('rpt-lot')?.value  ? 'Lô: '+document.getElementById('rpt-lot').value : '',
+    document.getElementById('rpt-sp')?.value   ? 'Điểm bán: '+document.getElementById('rpt-sp').value : '',
+  ].filter(Boolean).join(' | ') || 'Tất cả';
+  const win = window.open('','_blank');
+  if(!win){ showToast('Trình duyệt chặn cửa sổ in. Vui lòng cho phép popup.','warn'); return; }
+  win.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="utf-8">
+    <title>${title}</title>
+    <style>
+      body{font-family:Arial,sans-serif;font-size:12px;color:#111;margin:20px;}
+      h2{font-size:16px;margin:0 0 4px;}
+      .sub{font-size:11px;color:#666;margin-bottom:14px;}
+      table{width:100%;border-collapse:collapse;font-size:11px;}
+      th{background:#0F6E56;color:#fff;padding:7px 8px;text-align:left;font-size:11px;}
+      td{padding:6px 8px;border-bottom:1px solid #ddd;vertical-align:top;}
+      tr:nth-child(even) td{background:#f9f9f9;}
+      .badge{display:inline-block;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;}
+      @media print{body{margin:0;} button{display:none;}}
+    </style>
+  </head><body>
+    <h2>${title}</h2>
+    <div class="sub">Bộ lọc: ${filterInfo} &nbsp;|&nbsp; In lúc: ${new Date().toLocaleString('vi-VN')}</div>
+    ${tableHTML}
+    <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`);
+  win.document.close();
+}
+
+function exportReportExcel(){
+  const isNX = rptTab === 'nangxuat';
+  let tbl;
+  if(isNX){
+    const panel = document.getElementById('rpt-nangxuat-panel');
+    tbl = panel ? panel.querySelector('table') : null;
+  } else {
+    tbl = document.getElementById('rpt-tbl');
+  }
+  if(!tbl){ showToast('Không có dữ liệu để xuất.','warn'); return; }
+
+  // Build CSV rows from table
+  const rows = [];
+  // Headers
+  const heads = [...tbl.querySelectorAll('thead th')].map(th=>'"'+th.innerText.replace(/"/g,'""')+'"');
+  rows.push(heads.join(','));
+  // Data rows (skip total row if it has colSpan)
+  // Xác định cột nào là SĐT / CCCD để giữ số 0
+  const phoneColIdx = new Set();
+  [...tbl.querySelectorAll('thead th')].forEach((th,i)=>{
+    const t = th.innerText.toLowerCase();
+    if(t.includes('điện thoại')||t.includes('sđt')||t.includes('cccd')||t.includes('phone')) phoneColIdx.add(i);
+  });
+  tbl.querySelectorAll('tbody tr').forEach(tr=>{
+    const cells = [...tr.querySelectorAll('td')];
+    if(cells.length < 3) return; // skip total row
+    const vals = cells.map((td,i)=>{
+      let txt = td.innerText.trim().replace(/\n/g,' ').replace(/"/g,'""');
+      // Cột SĐT/CCCD: wrap ="..." để Excel giữ số 0 đầu
+      if(phoneColIdx.has(i) && /^0\d+$/.test(txt.trim())) return '="'+txt.trim()+'"';
+      return '"'+txt+'"';
+    });
+    rows.push(vals.join(','));
+  });
+
+  const csv = '\uFEFF' + rows.join('\r\n'); // BOM for Excel UTF-8
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const stamp = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+  const fname = isNX ? `HongHa_NangSuat_${stamp}.csv` : `HongHa_BaoCao_${stamp}.csv`;
+
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showToast(`Đã xuất file <b>${fname}</b>. Mở bằng Excel để xem.`, 'success');
+}
+
+function renderNangSuat(){
+  const panel=document.getElementById('rpt-nangxuat-panel');
+  if(!panel)return;
+  panel.style.display='block';
+
+  const lf=document.getElementById('rpt-lot').value;
+  const sf=(currentUser.role==='Admin'||currentUser.role==='Quản Lý')?document.getElementById('rpt-sp').value:currentUser.sp;
+
+  // Lấy tất cả transactions có đơn đặt tương ứng
+  let txList=DB.transactions;
+  if(currentUser.role==='Nhân viên'){
+    const myOrds=DB.orders.filter(o=>o.sp===currentUser.sp).map(o=>({custId:o.custId,lotCode:o.lotCode}));
+    txList=txList.filter(t=>myOrds.some(x=>x.custId===t.custId&&x.lotCode===t.lotCode));
+  } else if(sf){
+    const spOrds=DB.orders.filter(o=>o.sp===sf).map(o=>({custId:o.custId,lotCode:o.lotCode}));
+    txList=txList.filter(t=>spOrds.some(x=>x.custId===t.custId&&x.lotCode===t.lotCode));
+  }
+  if(lf) txList=txList.filter(t=>t.lotCode===lf);
+
+  if(!txList.length){
+    panel.innerHTML=`<div class="card card-pad" style="text-align:center;color:#999;padding:32px;">Chưa có dữ liệu bán kén để so sánh năng suất.</div>`;
+    return;
+  }
+
+  // Nhóm theo khách hàng — tổng hợp qua tất cả lô
+  const custMap={};
+  txList.forEach(t=>{
+    const c=getCust(t.custId);
+    const nsPerhop=t.boxes>0?Math.round(t.kg/t.boxes*100)/100:0;
+    if(!custMap[t.custId]){
+      // Lấy điểm bán từ đơn đặt tằm tương ứng
+      const ord=DB.orders.find(o=>o.custId===t.custId&&o.lotCode===t.lotCode);
+      custMap[t.custId]={
+        custId:t.custId, name:c.name, code:c.code, phone:c.phone,
+        sp:ord?ord.sp:(c.sp||'—'),
+        totalKg:0, totalBoxes:0, totalTienKen:0, lots:[], txCount:0
+      };
+    }
+    const cm=custMap[t.custId];
+    cm.totalKg=Math.round((cm.totalKg+t.kg)*100)/100;
+    cm.totalBoxes=Math.round((cm.totalBoxes+t.boxes)*100)/100;
+    cm.totalTienKen+=t.kg*t.price;
+    cm.txCount++;
+    cm.lots.push({lotCode:t.lotCode, kg:t.kg, boxes:t.boxes, ns:nsPerhop, ts:t.ts});
+  });
+
+  // Tính năng suất trung bình và xếp hạng
+  const ranked=Object.values(custMap).map(cm=>{
+    cm.avgNs=cm.totalBoxes>0?Math.round(cm.totalKg/cm.totalBoxes*100)/100:0;
+    return cm;
+  }).sort((a,b)=>b.avgNs-a.avgNs);
+
+  // Tính avg chung để so sánh
+  const allAvgNs=ranked.length?Math.round(ranked.reduce((s,c)=>s+c.avgNs,0)/ranked.length*100)/100:0;
+  const maxNs=ranked[0]?.avgNs||0;
+
+  // KPI
+  const kpiHtml=`<div class="stat-grid" style="margin-bottom:16px;">
+    <div class="stat-box"><div class="lbl"><i class="ti ti-users"></i> Số hộ nuôi</div><div class="val">${ranked.length}</div><div class="sub">Có dữ liệu bán kén</div></div>
+    <div class="stat-box green"><div class="lbl"><i class="ti ti-trophy"></i> Cao nhất</div><div class="val" style="font-size:20px;">${maxNs} kg/hộp</div><div class="sub">${ranked[0]?.name||'—'}</div></div>
+    <div class="stat-box"><div class="lbl"><i class="ti ti-chart-bar"></i> Bình quân chung</div><div class="val" style="font-size:20px;">${allAvgNs} kg/hộp</div><div class="sub">Tất cả hộ nuôi</div></div>
+    <div class="stat-box amber"><div class="lbl"><i class="ti ti-box"></i> Tổng kén</div><div class="val" style="font-size:20px;">${ranked.reduce((s,c)=>s+c.totalKg,0)} kg</div><div class="sub">Từ ${ranked.reduce((s,c)=>s+c.totalBoxes,0)} hộp</div></div>
+  </div>`;
+
+  // Bảng xếp hạng
+  const MEDAL=['🥇','🥈','🥉'];
+  const rows=ranked.map((cm,i)=>{
+    const medal=i<3?MEDAL[i]:`${i+1}`;
+    const nsColor=cm.avgNs>=allAvgNs?'#0a5c46':'#b8620a';
+    const barPct=maxNs>0?Math.round(cm.avgNs/maxNs*100):0;
+    const barColor=i===0?'#0a5c46':i<3?'#185FA5':cm.avgNs>=allAvgNs?'#1D9E75':'#EF9F27';
+    // Chi tiết từng lô
+    const lotsDetail=cm.lots.map(l=>
+      `<span class="badge b-gray" style="font-size:10px;margin:1px;">${l.lotCode}: ${l.ns} kg/hộp</span>`
+    ).join('');
+    return `<tr>
+      <td style="font-size:16px;text-align:center;">${medal}</td>
+      <td style="font-weight:700;">${cm.name}</td>
+      <td style="color:#666;">${cm.code}</td>
+      <td>${cm.phone}</td>
+      <td><span class="badge b-gray" style="font-size:11px;">${cm.sp||'—'}</span></td>
+      <td style="font-weight:700;color:${nsColor};font-size:15px;">${cm.avgNs} kg/hộp</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="flex:1;height:8px;background:#ddd;border-radius:4px;overflow:hidden;min-width:60px;">
+            <div style="width:${barPct}%;height:100%;background:${barColor};border-radius:4px;"></div>
+          </div>
+          <span style="font-size:11px;color:#888;">${barPct}%</span>
+        </div>
+      </td>
+      <td style="color:#555;">${cm.totalKg} kg / ${cm.totalBoxes} hộp</td>
+      <td style="font-weight:700;color:#185FA5;">${fmtMoney(cm.totalTienKen)} đ</td>
+      <td style="font-size:11px;">${lotsDetail}</td>
+    </tr>`;
+  }).join('');
+
+  const tableHtml=`<div class="card" style="overflow:hidden;">
+    <div style="padding:14px 16px;border-bottom:2px solid #ddd;display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:14px;font-weight:700;"><i class="ti ti-trophy" style="color:#185FA5;"></i> Xếp hạng năng suất nuôi tằm</span>
+      <span style="font-size:12px;color:#888;">Sắp xếp theo kg kén / hộp tằm (cao nhất → thấp nhất)</span>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr>
+        <th style="text-align:center;">Hạng</th><th>Họ và tên</th><th>Mã KH</th><th>Điện thoại</th>
+        <th>Điểm bán</th>
+        <th style="color:#0a5c46;">Năng suất TB</th><th style="min-width:120px;">So sánh</th>
+        <th>Tổng kén / hộp</th><th style="color:#185FA5;">Tổng tiền kén</th>
+        <th>Chi tiết theo lô</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </div>`;
+
+  panel.innerHTML=kpiHtml+tableHtml;
+}
+
+function setRptTab(tab){
+  rptTab=tab;
+  ['all','sold','unsold','unsold-normal','unsold-poison','nangxuat'].forEach(t=>{
+    const el=document.getElementById('rpt-tab-'+t);
+    if(!el)return;
+    el.className=t===tab?'btn btn-primary':'btn';
+    el.style.fontSize='12px';
+  });
+  // show/hide main table vs nangxuat panel
+  const mainCard=document.querySelector('#pg-reports .card');
+  const nxPanel=document.getElementById('rpt-nangxuat-panel');
+  const statsEl=document.getElementById('rpt-stats');
+  if(tab==='nangxuat'){
+    if(mainCard) mainCard.style.display='none';
+    if(statsEl) statsEl.style.display='none';
+    renderNangSuat();
+  } else {
+    if(mainCard) mainCard.style.display='';
+    if(statsEl) statsEl.style.display='';
+    if(nxPanel) nxPanel.style.display='none';
+    renderReports();
+  }
+}
+
+function badgeUnsold(reason){
+  if(reason==='Tằm ngộ độc') return '<span class="badge b-red">Tằm ngộ độc</span>';
+  if(reason==='Không bán kén') return '<span class="badge b-amber">Không bán kén</span>';
+  return '<span class="badge b-amber">Chưa bán kén</span>';
+}
+
+function getFilteredOrders(){
+  const lf=document.getElementById('rpt-lot').value;
+  const sf=(currentUser.role==='Admin'||currentUser.role==='Quản Lý')?document.getElementById('rpt-sp').value:currentUser.sp;
+  let ordAll=DB.orders.filter(o=>o.status==='Xác nhận');
+  if(currentUser.role==='Nhân viên') ordAll=ordAll.filter(o=>o.sp===currentUser.sp);
+  else if(sf) ordAll=ordAll.filter(o=>o.sp===sf);
+  if(lf) ordAll=ordAll.filter(o=>o.lotCode===lf);
+  return ordAll;
+}
+
+function renderReports(){
+  const ordAll=getFilteredOrders();
+  const isSold=o=>DB.transactions.some(t=>t.custId===o.custId&&t.lotCode===o.lotCode);
+  const getTx=o=>DB.transactions.find(t=>t.custId===o.custId&&t.lotCode===o.lotCode);
+
+  let list=ordAll;
+  if(rptTab==='sold')          list=ordAll.filter(o=>isSold(o));
+  if(rptTab==='unsold')        list=ordAll.filter(o=>!isSold(o));
+  if(rptTab==='unsold-normal') list=ordAll.filter(o=>!isSold(o)&&o.unsoldReason==='Không bán kén');
+  if(rptTab==='unsold-poison') list=ordAll.filter(o=>!isSold(o)&&o.unsoldReason==='Tằm ngộ độc');
+
+  const soldList=list.filter(o=>isSold(o));
+  const txObjs=soldList.map(o=>getTx(o));
+  const totalMoney=txObjs.reduce((s,t)=>s+(t?t.kg*t.price:0),0);
+  const totalKg=txObjs.reduce((s,t)=>s+(t?t.kg:0),0);
+  const totalBoxesSold=txObjs.reduce((s,t)=>s+(t?t.boxes:0),0);
+  const avgNs=totalBoxesSold?Math.round(totalKg/totalBoxesSold*100)/100:0;
+  const unsoldList=list.filter(o=>!isSold(o));
+  const totalBoxesUnsold=unsoldList.reduce((s,o)=>s+o.boxes,0);
+
+  if(rptTab==='sold'){
+    document.getElementById('rpt-stats').innerHTML=`
+      <div class="stat-box green"><div class="lbl">Tổng tiền kén</div><div class="val" style="font-size:18px;">${fmtMoney(totalMoney)} đ</div><div class="sub">${soldList.length} giao dịch</div></div>
+      <div class="stat-box"><div class="lbl">Tổng kén thu về</div><div class="val" style="font-size:18px;">${totalKg.toLocaleString()} kg</div><div class="sub">Từ ${totalBoxesSold} hộp</div></div>
+      <div class="stat-box" style="border-color:#80b8e8;"><div class="lbl">Năng suất bình quân</div><div class="val" style="font-size:18px;color:#185FA5;">${avgNs} kg/hộp</div><div class="sub">Bình quân đã bán</div></div>`;
+  } else if(rptTab==='unsold'||rptTab==='unsold-normal'||rptTab==='unsold-poison'){
+    const cntNormal=ordAll.filter(o=>!isSold(o)&&o.unsoldReason==='Không bán kén').length;
+    const cntPoison=ordAll.filter(o=>!isSold(o)&&o.unsoldReason==='Tằm ngộ độc').length;
+    const cntPending=ordAll.filter(o=>!isSold(o)&&!o.unsoldReason).length;
+    document.getElementById('rpt-stats').innerHTML=`
+      <div class="stat-box amber"><div class="lbl">Tổng chưa bán kén</div><div class="val" style="font-size:22px;">${unsoldList.length}</div><div class="sub">${totalBoxesUnsold} hộp</div></div>
+      <div class="stat-box red"><div class="lbl">Tằm ngộ độc</div><div class="val" style="font-size:22px;color:#8b1a1a;">${cntPoison}</div><div class="sub">đơn</div></div>
+      <div class="stat-box"><div class="lbl">Không bán / Chờ thu</div><div class="val" style="font-size:22px;">${cntNormal} / ${cntPending}</div><div class="sub">đơn</div></div>`;
+  } else {
+    document.getElementById('rpt-stats').innerHTML=`
+      <div class="stat-box green"><div class="lbl">Tổng tiền kén</div><div class="val" style="font-size:18px;">${fmtMoney(totalMoney)} đ</div><div class="sub">${soldList.length} đã bán / ${list.length} tổng đơn</div></div>
+      <div class="stat-box"><div class="lbl">Tổng kén thu về</div><div class="val" style="font-size:18px;">${totalKg.toLocaleString()} kg</div><div class="sub">Từ ${totalBoxesSold} hộp đã bán</div></div>
+      <div class="stat-box" style="border-color:#80b8e8;"><div class="lbl">Năng suất bình quân</div><div class="val" style="font-size:18px;color:#185FA5;">${avgNs} kg/hộp</div><div class="sub">Bình quân đã bán</div></div>`;
+  }
+
+  const rows=list.map((o,i)=>{
+    const c=getCust(o.custId);
+    const tx=getTx(o);
+    const sold=!!tx;
+    const tienKen=sold?tx.kg*tx.price:0;
+    const tienTam=o.boxes*(o.price||0);
+    const thanhToan=tienKen-tienTam;
+    return `<tr>
+      <td>${i+1}</td><td>${sold?tx.ts:o.ts}</td>
+      <td style="color:#666;">${c.code}</td>
+      <td style="font-weight:700;">${c.name}</td>
+      <td>${c.phone}</td>
+      <td style="font-size:11px;">${c.addr}</td>
+      <td><span class="badge b-gray">${o.lotCode}</span></td>
+      <td>${o.boxes}</td>
+      <td>${sold?tx.kg+' kg':'—'}</td>
+      <td>${sold?fmtMoney(tx.price):'—'}</td>
+      <td style="font-weight:700;color:#185FA5;">${sold?fmtMoney(tienKen)+' đ':'—'}</td>
+      <td style="color:#7a4500;">${tienTam?fmtMoney(tienTam)+' đ':'—'}</td>
+      <td style="font-weight:700;color:${thanhToan>=0?'#0a5c46':'#c0392b'};">${sold?fmtMoney(thanhToan)+' đ':'—'}</td>
+      <td>${o.sp}</td>
+      <td>${sold?'<span class="badge b-green">Đã bán kén</span>':badgeUnsold(o.unsoldReason)}</td>
+    </tr>`;
+  }).join('');
+  // Tính tổng
+  const totBoxes=list.reduce((s,o)=>Math.round((s+o.boxes)*100)/100,0);
+  const totKg=list.reduce((s,o)=>{const tx=getTx(o);return s+(tx?tx.kg:0);},0);
+  const totTienKen=list.reduce((s,o)=>{const tx=getTx(o);return s+(tx?tx.kg*tx.price:0);},0);
+  const totTienTam=list.reduce((s,o)=>s+o.boxes*(o.price||0),0);
+  // Tổng Thanh toán = chỉ tính các đơn ĐÃ bán kén (có tx)
+  const totThanhToan=list.reduce((s,o)=>{
+    const tx=getTx(o);
+    if(!tx)return s;
+    const tienKen=tx.kg*tx.price;
+    const tienTam=o.boxes*(o.price||0);
+    return s+(tienKen-tienTam);
+  },0);
+  const soldCount=list.filter(o=>isSold(o)).length;
+  const totRow=list.length?`<tr style="background:#f0f0f0;font-weight:700;border-top:2px solid #999;">
+    <td colspan="7" style="text-align:right;padding:9px 10px;color:#333;">TỔNG CỘNG (${list.length} đơn)</td>
+    <td>${totBoxes}</td>
+    <td>${totKg?totKg.toLocaleString()+' kg':'—'}</td>
+    <td></td>
+    <td style="color:#185FA5;">${totTienKen?fmtMoney(totTienKen)+' đ':'—'}</td>
+    <td style="color:#7a4500;">${totTienTam?fmtMoney(totTienTam)+' đ':'—'}</td>
+    <td style="color:${totThanhToan>=0?'#0a5c46':'#c0392b'};">${soldCount?fmtMoney(totThanhToan)+' đ':'—'}</td>
+    <td colspan="2"></td>
+  </tr>`:'';
+
+  document.getElementById('rpt-tbl').innerHTML=`<thead><tr>
+    <th>#</th><th>Ngày giờ</th><th>Mã KH</th><th>Họ và tên</th><th>Điện thoại</th><th>Địa chỉ</th>
+    <th>Lô tằm</th><th>Hộp đặt</th><th>KL kén</th><th>Giá kén</th>
+    <th style="color:#185FA5;">Tiền kén</th>
+    <th style="color:#7a4500;">Tiền tằm</th>
+    <th style="color:#0a5c46;">Thanh toán</th>
+    <th>Điểm bán</th><th>Trạng thái</th>
+  </tr></thead><tbody>${rows||'<tr><td colspan="15" style="text-align:center;padding:20px;color:#999;">Không có dữ liệu</td></tr>'}${totRow}</tbody>`;
+}
+
+// ============================================================
+let bkFileData = null; // pending restore data
+let bkHistory = JSON.parse(localStorage.getItem('hh_bk_history')||'[]');
+
+function renderBackup(){
+  // update counts
+  document.getElementById('bk-cnt-users').textContent = DB.users.length + ' người dùng';
+  document.getElementById('bk-cnt-sp').textContent = DB.salespoints.length + ' điểm';
+  document.getElementById('bk-cnt-batches').textContent = DB.batches.length + ' lô';
+  document.getElementById('bk-cnt-custs').textContent = DB.customers.length + ' khách';
+  document.getElementById('bk-cnt-orders').textContent = DB.orders.length + ' đơn';
+  document.getElementById('bk-cnt-tx').textContent = DB.transactions.length + ' giao dịch';
+  // render history
+  renderBkHistory();
+  // reset restore zone
+  bkFileData=null;
+  document.getElementById('bk-preview').style.display='none';
+  document.getElementById('bk-restore-btn').style.display='none';
+  document.getElementById('bk-file-input').value='';
+  const manualArea=document.getElementById('bk-manual-area');
+  if(manualArea) manualArea.style.display='none';
+  const jsonTa=document.getElementById('bk-json-text');
+  if(jsonTa) jsonTa.value='';
+  // show storage size
+  try{
+    const raw=localStorage.getItem(DB_KEY)||'';
+    const kb=(new Blob([raw]).size/1024).toFixed(1);
+    const el=document.getElementById('bk-storage-info');
+    if(el) el.textContent=raw?`Dung lượng đang dùng: ${kb} KB`:'Chưa có dữ liệu tạm';
+  }catch(e){}
+}
+
+function getBackupJson(){
+  const payload={
+    _meta:{app:'Kén tằm Hồng Hà',version:'1.0',exportedAt:nowTs(),exportedBy:currentUser.name},
+    DB:DB
+  };
+  return JSON.stringify(payload,null,2);
+}
+
+function copyBackupToClipboard(){
+  const json=getBackupJson();
+  const ta=document.getElementById('bk-json-text');
+  ta.value=json;
+  document.getElementById('bk-manual-area').style.display='block';
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(json).then(()=>{
+      showToast('Đã sao chép JSON vào clipboard! Dán vào Notepad và lưu thành file .json','success');
+    }).catch(()=>{
+      ta.select();
+      showToast('Vui lòng chọn nội dung bên dưới và nhấn Ctrl+C','warn');
+    });
+  } else {
+    ta.select();
+    try{document.execCommand('copy');showToast('Đã sao chép! Dán vào Notepad và lưu thành file .json','success');}
+    catch(e){showToast('Vui lòng chọn nội dung bên dưới và nhấn Ctrl+C để sao chép','info');}
+  }
+  bkHistory.unshift({ts:nowTs(),by:currentUser.name,type:'export',counts:{
+    users:DB.users.length,sp:DB.salespoints.length,batches:DB.batches.length,
+    custs:DB.customers.length,orders:DB.orders.length,tx:DB.transactions.length
+  }});
+  if(bkHistory.length>20)bkHistory=bkHistory.slice(0,20);
+  try{localStorage.setItem('hh_bk_history',JSON.stringify(bkHistory));}catch(e){}
+  renderBkHistory();
+}
+
+function exportBackup(){
+  const payload = {
+    _meta: {
+      app: 'Kén tằm Hồng Hà',
+      version: '1.0',
+      exportedAt: nowTs(),
+      exportedBy: currentUser.name
+    },
+    DB: DB
+  };
+  const json = JSON.stringify(payload, null, 2);
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
+  const filename = `HongHa_backup_${stamp}.json`;
+
+  // Method 1: data URI (works in all browsers including local file)
+  try {
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+    const a = document.createElement('a');
+    a.href = dataUri;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch(e) {
+    // Method 2: open in new tab as fallback
+    const w = window.open('', '_blank');
+    if(w){
+      w.document.write('<pre style="font-family:monospace;font-size:12px;white-space:pre-wrap;">' + json.replace(/</g,'&lt;') + '</pre>');
+      w.document.title = filename;
+      w.document.close();
+      showToast('Không thể tải tự động. File đã mở trong tab mới — nhấn Ctrl+S để lưu.', 'warn');
+    }
+  }
+
+  // Save to history
+  bkHistory.unshift({ts: nowTs(), by: currentUser.name, type:'export', counts:{
+    users: DB.users.length, sp: DB.salespoints.length, batches: DB.batches.length,
+    custs: DB.customers.length, orders: DB.orders.length, tx: DB.transactions.length
+  }});
+  if(bkHistory.length>20) bkHistory=bkHistory.slice(0,20);
+  try{ localStorage.setItem('hh_bk_history', JSON.stringify(bkHistory)); }catch(e){}
+  renderBkHistory();
+  showToast(`Đã xuất backup <b>${filename}</b> thành công!`, 'success');
+}
+
+function handleBackupFile(file){
+  if(!file) return;
+  if(!file.name.endsWith('.json')){showToast('Vui lòng chọn file .json!','warn');return;}
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data.DB||!data.DB.users||!data.DB.batches){
+        showToast('File không hợp lệ! Đây không phải file backup từ hệ thống Hồng Hà.','error');
+        return;
+      }
+      bkFileData = data;
+      const m = data._meta||{};
+      const d = data.DB;
+      document.getElementById('bk-preview-content').innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+          <span style="color:#777;">Thời gian backup:</span><span style="font-weight:700;">${m.exportedAt||'—'}</span>
+          <span style="color:#777;">Người xuất:</span><span style="font-weight:700;">${m.exportedBy||'—'}</span>
+          <span style="color:#777;">Users:</span><span>${(d.users||[]).length} người dùng</span>
+          <span style="color:#777;">Điểm bán:</span><span>${(d.salespoints||[]).length} điểm</span>
+          <span style="color:#777;">Lô tằm:</span><span>${(d.batches||[]).length} lô</span>
+          <span style="color:#777;">Khách hàng:</span><span>${(d.customers||[]).length} khách</span>
+          <span style="color:#777;">Đơn đặt:</span><span>${(d.orders||[]).length} đơn</span>
+          <span style="color:#777;">Giao dịch:</span><span>${(d.transactions||[]).length} giao dịch</span>
+        </div>`;
+      document.getElementById('bk-preview').style.display='block';
+      document.getElementById('bk-restore-btn').style.display='';
+    } catch(err){
+      showToast('Lỗi đọc file: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function clearLocalData(){
+  if(!confirm('⚠️ Xác nhận XOÁ toàn bộ dữ liệu tạm?\n\nDữ liệu sẽ reset về dữ liệu mẫu mặc định.\nHãy xuất backup trước nếu cần giữ lại dữ liệu!')) return;
+  try{ localStorage.removeItem(DB_KEY); }catch(e){}
+  DB = JSON.parse(JSON.stringify(DB_DEFAULT));
+  initFilters();
+  renderBackup();
+  showToast('Đã xoá dữ liệu tạm — hệ thống đã reset về mặc định.','success');
+}
+
+function checkStorageSize(){
+  try{
+    const raw = localStorage.getItem(DB_KEY)||'';
+    const bytes = new Blob([raw]).size;
+    const kb = (bytes/1024).toFixed(1);
+    const el = document.getElementById('bk-storage-info');
+    if(el) el.textContent = `Dung lượng đang dùng: ${kb} KB`;
+    showToast(`Dữ liệu tạm đang chiếm <b>${kb} KB</b> trong bộ nhớ trình duyệt.`,'info');
+  }catch(e){ showToast('Không thể kiểm tra dung lượng.','warn'); }
+}
+
+function confirmRestore(){
+  if(!bkFileData){return;}
+  if(!confirm('⚠️ CẢNH BÁO: Toàn bộ dữ liệu hiện tại sẽ bị GHI ĐÈ bởi dữ liệu trong file backup!\n\nBạn có chắc chắn muốn khôi phục không?')) return;
+  DB = bkFileData.DB;
+  saveDB();
+  bkHistory.unshift({ts: nowTs(), by: currentUser.name, type:'restore', counts:{
+    users: DB.users.length, sp: DB.salespoints.length, batches: DB.batches.length,
+    custs: DB.customers.length, orders: DB.orders.length, tx: DB.transactions.length
+  }});
+  if(bkHistory.length>20) bkHistory=bkHistory.slice(0,20);
+  try{ localStorage.setItem('hh_bk_history', JSON.stringify(bkHistory)); }catch(e){}
+  bkFileData=null;
+  document.getElementById('bk-preview').style.display='none';
+  document.getElementById('bk-restore-btn').style.display='none';
+  document.getElementById('bk-file-input').value='';
+  initFilters();
+  renderBackup();
+  showToast('✅ Khôi phục dữ liệu thành công!','success');
+}
+
+function renderBkHistory(){
+  const el=document.getElementById('bk-history');
+  if(!bkHistory.length){el.innerHTML='<span style="color:#bbb;">Chưa có lịch sử backup.</span>';return;}
+  el.innerHTML=bkHistory.map(h=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #eee;">
+      <span style="width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;background:${h.type==='export'?'#e8f7f2':'#fde8b5'};">
+        ${h.type==='export'?'📤':'📥'}
+      </span>
+      <span style="flex:1;">
+        <b>${h.type==='export'?'Xuất backup':'Khôi phục backup'}</b>
+        <span style="color:#888;"> — ${h.ts}</span>
+        <span style="color:#888;"> bởi ${h.by}</span>
+      </span>
+      <span style="font-size:11px;color:#999;">
+        ${h.counts.users}U · ${h.counts.batches}L · ${h.counts.custs}KH · ${h.counts.orders}Đ · ${h.counts.tx}GD
+      </span>
+    </div>`).join('');
+}
+
+
+// ---- Multi-select lô tằm ----
+function toggleLotDropdown(e){
+  e.stopPropagation();
+  const panel = document.getElementById('debt-lot-panel');
+  if(!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  // Đóng tất cả dropdown khác nếu có
+  panel.style.display = isOpen ? 'none' : 'block';
+}
+// Đóng dropdown khi click ra ngoài
+document.addEventListener('click', function(e){
+  const dd = document.getElementById('debt-lot-dropdown');
+  if(dd && !dd.contains(e.target)){
+    const panel = document.getElementById('debt-lot-panel');
+    if(panel) panel.style.display = 'none';
+  }
+});
+function onLotAllChange(cb){
+  // Tick "Tất cả" → chọn/bỏ hết
+  document.querySelectorAll('#debt-lot-checks input[type=checkbox]').forEach(c => c.checked = cb.checked);
+  updateLotLabel();
+  renderDebts();
+}
+function onLotItemChange(){
+  const allCb = document.getElementById('debt-lot-all');
+  const items = document.querySelectorAll('#debt-lot-checks input[type=checkbox]');
+  const checked = document.querySelectorAll('#debt-lot-checks input[type=checkbox]:checked');
+  if(allCb) allCb.checked = items.length === checked.length;
+  updateLotLabel();
+  renderDebts();
+}
+function updateLotLabel(){
+  const allCb = document.getElementById('debt-lot-all');
+  const checked = document.querySelectorAll('#debt-lot-checks input[type=checkbox]:checked');
+  const total   = document.querySelectorAll('#debt-lot-checks input[type=checkbox]').length;
+  const lbl = document.getElementById('debt-lot-label');
+  if(!lbl) return;
+  if(!allCb || allCb.checked || checked.length === total){
+    lbl.textContent = 'Tất cả lô tằm';
+  } else if(checked.length === 0){
+    lbl.textContent = 'Chưa chọn lô nào';
+    lbl.style.color = '#e74c3c';
+    return;
+  } else if(checked.length <= 2){
+    lbl.textContent = Array.from(checked).map(c=>c.value).join(', ');
+  } else {
+    lbl.textContent = `${checked.length} lô được chọn`;
+  }
+  lbl.style.color = '';
+}
+
+// ============================================================
+// QUẢN LÝ CÔNG NỢ
+// ============================================================
+
+// Hàm tính nợ thực của 1 order (giống logic renderOrders)
+function calcOrderDebtAmt(o){
+  const amt = o.boxes * (o.price || 0);
+  const manualPaid = o.paid || 0;
+  const tx = getTxFast(o.custId, o.lotCode);
+  const tienKen = tx ? tx.kg * tx.price : 0;
+  const remainingDebt = Math.max(0, amt - manualPaid);
+  const kenPaidActual = Math.min(tienKen, remainingDebt);
+  const paid = manualPaid + kenPaidActual;
+  const debt = amt - paid;
+  return { amt, manualPaid, tienKen, kenPaidActual, paid, debt };
+}
+
+// Tổng hợp công nợ theo từng khách hàng
+function buildDebtList(){
+  const isStaff   = currentUser.role === 'Nhân viên';
+  // Nhân viên luôn bị gán cứng về điểm bán của họ
+  const spFilter  = isStaff ? currentUser.sp : ((document.getElementById('debt-sp-filter')  || {}).value || '');
+  // Lấy các lô được chọn (multi-select)
+  const lotChecks = document.querySelectorAll('#debt-lot-checks input[type=checkbox]:checked');
+  const selectedLots = lotChecks.length ? Array.from(lotChecks).map(c => c.value) : [];
+  const allLotChecked = (document.getElementById('debt-lot-all') || {}).checked !== false;
+  const searchQ   = ((document.getElementById('debt-search')    || {}).value || '').toLowerCase().trim();
+
+  // Chỉ tính nợ các lô tằm đã xuất (dateOut < hôm nay)
+  const today = new Date(); today.setHours(0,0,0,0);
+  const exportedLotCodes = new Set(
+    DB.batches.filter(b => { const d = parseDMY(b.dateOut); return d && d < today; }).map(b => b.code)
+  );
+
+  // Lấy orders không bị hủy, thuộc lô đã xuất
+  let activeOrders = DB.orders.filter(o => o.status !== 'Khách hủy' && exportedLotCodes.has(o.lotCode));
+  if(!allLotChecked && selectedLots.length) activeOrders = activeOrders.filter(o => selectedLots.includes(o.lotCode));
+  if(spFilter)  activeOrders = activeOrders.filter(o => o.sp === spFilter);
+
+  // Gom nhóm theo custId
+  const custDebtMap = {};
+  activeOrders.forEach(o => {
+    const { debt, amt, manualPaid, tienKen, kenPaidActual, paid } = calcOrderDebtAmt(o);
+    if(debt <= 0) return; // chỉ lấy khách CÒN NỢ
+    if(!custDebtMap[o.custId]){
+      const c = getCustFast(o.custId);
+      custDebtMap[o.custId] = {
+        custId: o.custId,
+        custName: c.name,
+        custPhone: c.phone,
+        custCode: c.code,
+        sp: o.sp,
+        totalDebt: 0,
+        lots: []
+      };
+    }
+    custDebtMap[o.custId].totalDebt += debt;
+    custDebtMap[o.custId].lots.push({ o, amt, manualPaid, tienKen, kenPaidActual, paid, debt });
+  });
+
+  let list = Object.values(custDebtMap);
+
+  // Lọc theo search
+  if(searchQ){
+    list = list.filter(r =>
+      r.custName.toLowerCase().includes(searchQ) ||
+      (r.custPhone || '').replace(/\s/g,'').includes(searchQ.replace(/\s/g,''))
+    );
+  }
+
+  // Sắp xếp: nợ nhiều nhất lên đầu
+  list.sort((a,b) => b.totalDebt - a.totalDebt);
+  return list;
+}
+
+function renderDebts(){
+  // Cập nhật filters
+  const spSel  = document.getElementById('debt-sp-filter');
+  const lotSel = document.getElementById('debt-lot-filter');
+
+  // Nhân viên: ẩn dropdown điểm bán, chỉ thấy điểm bán của mình
+  const isStaff = currentUser.role === 'Nhân viên';
+  spSel.style.display = isStaff ? 'none' : '';
+  const curSP = isStaff ? currentUser.sp : spSel.value;
+  if(!isStaff){
+    spSel.innerHTML = '<option value="">Tất cả điểm bán</option>' +
+      DB.salespoints.map(s=>`<option value="${s.name}" ${curSP===s.name?'selected':''}>${s.name}</option>`).join('');
+  }
+  // Chỉ hiện lô đã xuất trong multi-select dropdown
+  const todayD = new Date(); todayD.setHours(0,0,0,0);
+  const exportedBatches = DB.batches.filter(b => { const d = parseDMY(b.dateOut); return d && d < todayD; });
+  const checksContainer = document.getElementById('debt-lot-checks');
+  if(checksContainer){
+    // Lấy các lô đang được chọn để giữ nguyên khi re-render
+    const prevSelected = new Set(Array.from(document.querySelectorAll('#debt-lot-checks input[type=checkbox]:checked')).map(c=>c.value));
+    checksContainer.innerHTML = exportedBatches.map(b => {
+      const checked = prevSelected.size === 0 || prevSelected.has(b.code);
+      return `<label style="display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f5f5f5;">
+        <input type="checkbox" value="${b.code}" onchange="onLotItemChange()" ${checked?'checked':''} style="accent-color:#0a5c46;width:15px;height:15px;">
+        <span>${b.code}</span>
+      </label>`;
+    }).join('');
+    updateLotLabel();
+  }
+
+  const list = buildDebtList();
+
+  // Stat boxes
+  const totalDebt   = list.reduce((s,r)=>s+r.totalDebt, 0);
+  const totalCusts  = list.length;
+  const allOrders   = DB.orders.filter(o=>o.status!=='Khách hủy');
+  const totalOrders = allOrders.length;
+  document.getElementById('debt-stats').innerHTML = `
+    <div class="stat-box red"><div class="lbl">Tổng công nợ</div><div class="val" style="font-size:18px;">${fmtMoney(totalDebt)} đ</div><div class="sub">Tất cả khách còn nợ</div></div>
+    <div class="stat-box amber"><div class="lbl">Số khách còn nợ</div><div class="val">${totalCusts}</div><div class="sub">/ ${DB.customers.length} khách hàng</div></div>
+    <div class="stat-box green"><div class="lbl">Số khách đã đủ</div><div class="val">${DB.customers.length - totalCusts}</div><div class="sub">Thanh toán đầy đủ</div></div>
+  `;
+
+  // Bảng
+  if(!list.length){
+    document.getElementById('debt-tbl').innerHTML =
+      `<thead><tr><th>#</th><th>Điểm bán</th><th>Họ và tên</th><th>Số điện thoại</th><th>Số lô còn nợ</th><th>Số tiền còn nợ</th><th>Ghi chú</th></tr></thead>
+       <tbody><tr><td colspan="7" style="text-align:center;padding:24px;color:#999;"><i class="ti ti-circle-check" style="font-size:24px;color:#0a5c46;display:block;margin-bottom:6px;"></i>Tất cả khách hàng đã thanh toán đầy đủ!</td></tr></tbody>`;
+    return;
+  }
+
+  const rows = list.map((r,i) => {
+    const note = (DB.debtNotes || {})[r.custId] || '';
+    return `<tr ondblclick="openDebtDetail(${r.custId})" style="cursor:pointer;" title="Nhấp đúp để xem chi tiết">
+      <td>${i+1}</td>
+      <td style="color:#555;font-size:12px;">${r.sp}</td>
+      <td style="font-weight:700;">${r.custName}<br><span style="font-size:11px;color:#888;font-weight:400;">${r.custCode}</span></td>
+      <td>${r.custPhone}</td>
+      <td style="text-align:center;"><span class="badge b-amber">${r.lots.length} lô</span></td>
+      <td style="font-weight:700;color:#c0392b;font-size:14px;">${fmtMoney(r.totalDebt)} đ</td>
+      <td style="font-size:12px;color:#666;font-style:italic;">${note || '<span style="color:#ccc;">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  // Dòng tổng
+  const totalRow = `<tr style="background:#f0f0f0;font-weight:700;border-top:2px solid #999;">
+    <td colspan="4" style="text-align:right;padding:9px 10px;color:#333;">TỔNG CỘNG (${list.length} khách nợ)</td>
+    <td style="text-align:center;">${list.reduce((s,r)=>s+r.lots.length,0)} lô</td>
+    <td style="color:#c0392b;">${fmtMoney(totalDebt)} đ</td>
+    <td></td>
+  </tr>`;
+
+  document.getElementById('debt-tbl').innerHTML =
+    `<thead><tr>
+      <th>#</th><th>Điểm bán</th><th>Họ và tên</th><th>Số điện thoại</th>
+      <th style="text-align:center;">Số lô nợ</th><th>Số tiền còn nợ</th><th>Ghi chú</th>
+    </tr></thead><tbody>${rows}${totalRow}</tbody>`;
+}
+
+// ---- Modal chi tiết công nợ ----
+function openDebtDetail(custId){
+  const c = getCustFast(custId);
+  const allDebts = buildDebtList();
+  const custData = allDebts.find(r => r.custId === custId);
+  if(!custData) return;
+
+  // Thông tin khách
+  document.getElementById('debt-detail-info').innerHTML = `
+    <div><span style="font-size:11px;color:#777;">Mã khách hàng</span><div style="font-weight:700;color:#0a5c46;">${c.code}</div></div>
+    <div><span style="font-size:11px;color:#777;">Họ và tên</span><div style="font-weight:700;">${c.name}</div></div>
+    <div><span style="font-size:11px;color:#777;">Số điện thoại</span><div style="font-weight:700;">${c.phone}</div></div>
+    <div><span style="font-size:11px;color:#777;">Điểm bán</span><div>${custData.sp}</div></div>
+    <div><span style="font-size:11px;color:#777;">Địa chỉ</span><div>${c.addr || '—'}</div></div>
+    <div><span style="font-size:11px;color:#777;">Số lô còn nợ</span><div><span class="badge b-amber">${custData.lots.length} lô</span></div></div>
+  `;
+
+  // Tổng nợ
+  document.getElementById('debt-detail-total').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;">
+      <i class="ti ti-alert-triangle" style="font-size:22px;"></i>
+      <span>Tổng công nợ còn lại</span>
+    </div>
+    <div style="font-size:20px;">${fmtMoney(custData.totalDebt)} đ</div>
+  `;
+
+  // Bảng chi tiết từng lô
+  const detailRows = custData.lots.map((item, i) => {
+    const o = item.o;
+    const lotDebtColor = item.debt > 0 ? '#c0392b' : '#0a5c46';
+    const payIcon = o.paymentMethod==='Chuyển khoản'?'🏦':o.paymentMethod==='Tiền mặt + CK'?'🔄':'💵';
+    return `<tr>
+      <td style="text-align:center;">${i+1}</td>
+      <td><span class="badge b-gray">${o.lotCode}</span></td>
+      <td style="text-align:center;">${o.boxes}</td>
+      <td style="text-align:right;">${o.price ? fmtMoney(o.price) + ' đ' : '—'}</td>
+      <td style="text-align:right;font-weight:700;color:#0a5c46;">${fmtMoney(item.amt)} đ</td>
+      <td style="text-align:right;color:#185FA5;">
+        ${item.manualPaid ? fmtMoney(item.manualPaid) + ' đ' : '—'}
+        ${item.kenPaidActual > 0 ? `<br><span style="font-size:10px;color:#185FA5;font-style:italic;">Bán kén: +${fmtMoney(item.kenPaidActual)} đ</span>` : ''}
+      </td>
+      <td style="text-align:right;font-size:12px;color:#666;">
+        ${item.tienKen > 0 ? fmtMoney(item.tienKen) + ' đ' : '<span style="color:#ccc;">Chưa bán kén</span>'}
+      </td>
+      <td style="text-align:right;font-weight:700;color:${lotDebtColor};">${fmtMoney(item.debt)} đ</td>
+      <td style="font-size:11px;color:#555;">${o.ts}</td>
+      <td style="font-size:12px;color:#555;">${payIcon} ${o.paymentMethod || '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const totalRow = `<tr style="background:#fef0f0;font-weight:700;border-top:2px solid #e08080;">
+    <td colspan="4" style="text-align:right;padding:9px 10px;">TỔNG</td>
+    <td style="text-align:right;color:#0a5c46;">${fmtMoney(custData.lots.reduce((s,x)=>s+x.amt,0))} đ</td>
+    <td style="text-align:right;color:#185FA5;">${fmtMoney(custData.lots.reduce((s,x)=>s+x.paid,0))} đ</td>
+    <td></td>
+    <td style="text-align:right;color:#c0392b;">${fmtMoney(custData.totalDebt)} đ</td>
+    <td colspan="2"></td>
+  </tr>`;
+
+  document.getElementById('debt-detail-tbl').innerHTML = `
+    <thead><tr>
+      <th>#</th><th>Lô tằm</th><th style="text-align:center;">Hộp</th><th style="text-align:right;">Đơn giá</th>
+      <th style="text-align:right;">Thành tiền</th><th style="text-align:right;">Đã trả (tằm)</th>
+      <th style="text-align:right;">Tiền kén</th><th style="text-align:right;">Còn nợ</th>
+      <th>Ngày đặt</th><th>Thanh toán</th>
+    </tr></thead>
+    <tbody>${detailRows}${totalRow}</tbody>
+  `;
+
+  // Ghi chú
+  const note = (DB.debtNotes || {})[custId] || '';
+  document.getElementById('debt-detail-note-input').value = note;
+  document.getElementById('debt-detail-cust-id').value = custId;
+
+  document.getElementById('modal-debt-detail').classList.add('open');
+}
+
+function saveDebtNote(){
+  const custId = parseInt(document.getElementById('debt-detail-cust-id').value);
+  const note   = document.getElementById('debt-detail-note-input').value.trim();
+  if(!DB.debtNotes) DB.debtNotes = {};
+  DB.debtNotes[custId] = note;
+  saveDB();
+  closeModal('modal-debt-detail');
+  renderDebts();
+  showToast('Đã lưu ghi chú công nợ!', 'success');
+}
+
+// ---- In danh sách nợ ----
+function printDebts(){
+  const list = buildDebtList();
+  const totalDebt = list.reduce((s,r)=>s+r.totalDebt, 0);
+  const rows = list.map((r,i) => {
+    const note = (DB.debtNotes || {})[r.custId] || '';
+    return `<tr>
+      <td style="text-align:center;">${i+1}</td>
+      <td>${r.sp}</td>
+      <td><b>${r.custName}</b><br><small>${r.custCode}</small></td>
+      <td>${r.custPhone}</td>
+      <td style="text-align:center;">${r.lots.length} lô</td>
+      <td style="text-align:right;font-weight:700;color:#c0392b;">${fmtMoney(r.totalDebt)} đ</td>
+      <td style="font-size:11px;">${note}</td>
+    </tr>`;
+  }).join('');
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+    <title>Danh sách công nợ – Kén tằm Hồng Hà</title>
+    <style>body{font-family:Arial,sans-serif;font-size:13px;margin:20px;}
+    table{width:100%;border-collapse:collapse;}
+    th,td{border:1px solid #999;padding:7px 9px;vertical-align:middle;}
+    th{background:#f0f0f0;font-weight:700;}
+    h2{text-align:center;margin-bottom:4px;}
+    .sub{text-align:center;color:#666;font-size:12px;margin-bottom:14px;}
+    .total{font-weight:700;background:#fff0f0;}</style>
+  </head><body>
+    <h2>DANH SÁCH CÔNG NỢ – KÉN TẰM HỒNG HÀ</h2>
+    <div class="sub">Ngày in: ${new Date().toLocaleDateString('vi-VN')} | Tổng nợ: ${fmtMoney(totalDebt)} đ | ${list.length} khách</div>
+    <table>
+      <thead><tr><th>#</th><th>Điểm bán</th><th>Họ và tên</th><th>Điện thoại</th><th>Số lô nợ</th><th>Số tiền còn nợ</th><th>Ghi chú</th></tr></thead>
+      <tbody>${rows}
+        <tr class="total"><td colspan="5" style="text-align:right;">TỔNG CỘNG</td>
+        <td style="text-align:right;color:#c0392b;">${fmtMoney(totalDebt)} đ</td><td></td></tr>
+      </tbody>
+    </table>
+  </body></html>`);
+  win.document.close();
+  setTimeout(()=>win.print(), 400);
+}
+
+// ---- Xuất Excel danh sách nợ ----
+function exportDebtsExcel(){
+  const list = buildDebtList();
+  const totalDebt = list.reduce((s,r)=>s+r.totalDebt,0);
+  const BOM = '\uFEFF';
+  const phoneColIdx = new Set([3]); // cột SĐT (index 3)
+  const header = '"STT","Điểm bán","Họ và tên","Mã KH","Số điện thoại","Số lô còn nợ","Số tiền còn nợ (đ)","Ghi chú"';
+  const rows = list.map((r,i)=>{
+    const phone = r.custPhone.trim();
+    const phoneCell = /^0\d+$/.test(phone) ? `="` + phone + `"` : `"${phone}"`;
+    const note = ((DB.debtNotes||{})[r.custId]||'').replace(/"/g,'""');
+    return [
+      `"${i+1}"`,
+      `"${r.sp.replace(/"/g,'""')}"`,
+      `"${r.custName.replace(/"/g,'""')}"`,
+      `"${r.custCode}"`,
+      phoneCell,
+      `"${r.lots.length}"`,
+      `"${r.totalDebt}"`,
+      `"${note}"`
+    ].join(',');
+  });
+  const totalRow = `"","","","","TỔNG CỘNG","${list.length} lô","${totalDebt}",""`;
+  const csv = BOM + [header, ...rows, totalRow].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `CongNo_HongHa_${new Date().toLocaleDateString('vi-VN').replace(/\//g,'-')}.csv`;
+  a.click();
+}
+
+
+
+</script>
+</body>
+</html>
