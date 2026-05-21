@@ -871,9 +871,10 @@ tr:hover td{background:#fafafa;}
 <div class="modal-bg" id="modal-tx">
 <div class="modal" style="width:620px;">
   <div class="modal-hdr">
-    <span class="modal-title"><i class="ti ti-coins"></i> Nhập giao dịch bán kén</span>
+    <span class="modal-title" id="tx-modal-title"><i class="ti ti-coins"></i> Nhập giao dịch bán kén</span>
     <span class="modal-close" onclick="closeModal('modal-tx')"><i class="ti ti-x"></i></span>
   </div>
+  <input type="hidden" id="tx-edit-id" value=""/>
   <div class="form-grid" style="gap:14px;">
 
     <!-- Bước 1: Chọn lô tằm để lọc khách hàng -->
@@ -914,7 +915,7 @@ tr:hover td{background:#fafafa;}
   </div>
   <div class="modal-ftr">
     <button class="btn" onclick="closeModal('modal-tx')" style="padding:11px 20px;font-size:14px;">Huỷ</button>
-    <button class="btn btn-primary" onclick="saveTx()" style="padding:11px 24px;font-size:14px;"><i class="ti ti-check"></i> Chốt giao dịch</button>
+    <button class="btn btn-primary" id="tx-save-btn" onclick="saveTx()" style="padding:11px 24px;font-size:14px;"><i class="ti ti-check"></i> Chốt giao dịch</button>
   </div>
 </div></div>
 
@@ -2082,7 +2083,49 @@ function deleteOrder(id){
 // ============================================================
 let txEligible=[]; // eligible orders for this modal session
 
+
+function openEditTx(txId){
+  const tx = DB.transactions.find(t=>t.id===txId);
+  if(!tx){showToast('Không tìm thấy giao dịch!','error');return;}
+  const c = getCustFast(tx.custId);
+  const ord = getOrdFast(tx.custId, tx.lotCode);
+
+  // Set chế độ chỉnh sửa
+  document.getElementById('tx-edit-id').value = txId;
+  document.getElementById('tx-modal-title').innerHTML = '<i class="ti ti-edit"></i> Chỉnh sửa giao dịch bán kén';
+  document.getElementById('tx-save-btn').innerHTML = '<i class="ti ti-check"></i> Lưu thay đổi';
+
+  // Ẩn phần chọn khách hàng / lô (không cho đổi)
+  document.getElementById('tx-cust-search').closest('.fg').style.display='none';
+  document.getElementById('tx-lot-filter-modal').closest('.fg').style.display='none';
+
+  // Hiện thông tin khách hàng (readonly)
+  const info = document.getElementById('tx-cust-info');
+  const tienTam = ord ? ord.boxes*(ord.price||0) : 0;
+  const paid = ord ? ord.paid||0 : 0;
+  info.innerHTML = `<i class="ti ti-info-circle"></i>
+    <b>${c.name}</b> (${c.code}) | Lô: <b>${tx.lotCode}</b> | Hộp: <b>${tx.boxes}</b>
+    ${ord&&ord.price?`| Tiền tằm: <b>${fmtMoney(Math.max(0,tienTam-paid))} đ</b>`:''}
+    <br><span style="font-size:11px;color:#888;">Giao dịch ngày: ${tx.ts}</span>`;
+  info.style.display='block';
+
+  // Điền KL kén và giá hiện tại
+  document.getElementById('tx-kg').value = tx.kg;
+  document.getElementById('tx-price').value = tx.price;
+  calcTx();
+
+  document.getElementById('modal-tx').classList.add('open');
+}
+
 function openTxModal(){
+  // Mode thêm mới
+  document.getElementById('tx-edit-id').value='';
+  document.getElementById('tx-modal-title').innerHTML='<i class="ti ti-coins"></i> Nhập giao dịch bán kén';
+  document.getElementById('tx-save-btn').innerHTML='<i class="ti ti-check"></i> Chốt giao dịch';
+  // Ẩn/hiện phần chọn khách hàng
+  document.getElementById('tx-cust-search').closest('.fg').style.display='';
+  document.getElementById('tx-lot-filter-modal').closest('.fg').style.display='';
+
   // Build eligible orders: Xác nhận, not yet sold, filtered by user
   let ordPool=DB.orders.filter(o=>o.status==='Xác nhận');
   if(currentUser.role==='Nhân viên') ordPool=ordPool.filter(o=>o.sp===currentUser.sp);
@@ -2188,15 +2231,29 @@ function calcTx(){
   document.getElementById('tx-total').value=kg&&price?fmtMoney(kg*price)+' đ':'';
 }
 function saveTx(){
-  const ordId=parseInt(document.getElementById('tx-cust').value);
+  const editId = document.getElementById('tx-edit-id').value;
   const kg=parseFloat(document.getElementById('tx-kg').value)||0;
   const price=parseFloat(document.getElementById('tx-price').value)||0;
-  if(!ordId||!kg||!price){showToast('Vui lòng điền đầy đủ!','warn');return;}
-  const ord=DB.orders.find(o=>o.id===ordId);
-  if(!ord){showToast('Không tìm thấy đơn đặt!','error');return;}
-  DB.transactions.push({id:DB.nextId.tx++,ts:nowTs(),custId:ord.custId,lotCode:ord.lotCode,boxes:ord.boxes,kg,price});
-  closeModal('modal-tx'); renderTx(); saveDB();
-  showToast(`Đã chốt giao dịch: ${kg}kg kén — ${fmtMoney(kg*price)} đ`,'success');
+  if(!kg||!price){showToast('Vui lòng nhập KL kén và Giá kén!','warn');return;}
+
+  if(editId){
+    // --- Chế độ CHỈNH SỬA ---
+    const tx=DB.transactions.find(t=>t.id===parseInt(editId));
+    if(!tx){showToast('Không tìm thấy giao dịch!','error');return;}
+    tx.kg=kg;
+    tx.price=price;
+    closeModal('modal-tx'); renderTx(); saveDB();
+    showToast(`Đã cập nhật: ${kg}kg kén — ${fmtMoney(kg*price)} đ`,'success');
+  } else {
+    // --- Chế độ THÊM MỚI ---
+    const ordId=parseInt(document.getElementById('tx-cust').value);
+    if(!ordId){showToast('Vui lòng chọn khách hàng!','warn');return;}
+    const ord=DB.orders.find(o=>o.id===ordId);
+    if(!ord){showToast('Không tìm thấy đơn đặt!','error');return;}
+    DB.transactions.push({id:DB.nextId.tx++,ts:nowTs(),custId:ord.custId,lotCode:ord.lotCode,boxes:ord.boxes,kg,price});
+    closeModal('modal-tx'); renderTx(); saveDB();
+    showToast(`Đã chốt giao dịch: ${kg}kg kén — ${fmtMoney(kg*price)} đ`,'success');
+  }
 }
 function renderTx(){
   const lf=document.getElementById('tx-lot-filter').value;
@@ -2235,7 +2292,7 @@ function renderTx(){
     const thanhToanColor=thanhToan>=0?'#0a5c46':'#c0392b';
     const tienTamNote=manualPaid>0?`<br><span style="font-size:10px;color:#888;font-style:italic;">Đã trả: ${fmtMoney(manualPaid)} đ</span>`:'';
     const spName=ord?ord.sp:'—';
-    return `<tr>
+    return `<tr ondblclick="openEditTx(${t.id})" style="cursor:pointer;" title="Nhấp đúp để chỉnh sửa">
       <td>${i+1}</td><td>${t.ts}</td>
       <td style="color:#666;">${c.code}</td>
       <td style="font-weight:700;">${c.name}</td>
