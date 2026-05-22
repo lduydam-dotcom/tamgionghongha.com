@@ -1573,10 +1573,7 @@ function renderDashOrders(){
   // filter by salespoint if not admin
   if(currentUser.role==='Nhân viên') list=list.filter(o=>o.sp===currentUser.sp);
   const activeOrders=list.filter(o=>o.status!=='Khách hủy');
-  pgInit('rep',25);
-  const pgR=pgSlice('rep',list);
-  _pgState['rep']._pages=pgR.pages;
-  const rows=pgR.slice.map((o,i)=>{
+  const rows=list.map((o,i)=>{
     const c=getCust(o.custId);
     return `<tr><td>${i+1}</td><td>${o.ts}</td><td style="font-weight:700;">${c.name||''}</td><td>${c.phone||''}</td><td><span class="badge b-gray">${o.lotCode}</span></td><td style="font-weight:700;">${o.status==='Khách hủy'?'<s style=\"color:#aaa;\">' +o.boxes+'</s>':o.boxes}</td><td>${o.sp}</td><td>${badgeOrd(o.status)}</td></tr>`;
   }).join('');
@@ -2624,8 +2621,19 @@ function renderTx(){
     const manualPaid=ord?ord.paid||0:0;
     const tienKen=t.kg*t.price;
     const tienTamGoc=t.boxes*ordPrice;
-    const tienTam=Math.max(0,tienTamGoc-manualPaid);
-    const thanhToan=tienKen-tienTam;
+    const tienTamNo=Math.max(0,tienTamGoc-manualPaid);
+    const payTam = t.payTam !== false; // mặc định true
+    // Khi payTam=false: trả toàn bộ tiền kén cho khách, không trừ tiền tằm
+    // Khi payTam=true: trừ tiền tằm (dùng tamAmount nếu có, không thì trừ hết nợ)
+    let tienTam, thanhToan;
+    if(!payTam){
+      tienTam = tienTamNo; // hiển thị số nợ nhưng CHƯA thu
+      thanhToan = tienKen; // khách nhận đủ tiền kén
+    } else {
+      const tamPaid = (t.tamAmount != null && t.tamAmount > 0) ? Math.min(t.tamAmount, tienTamNo) : tienTamNo;
+      tienTam = tamPaid;
+      thanhToan = tienKen - tamPaid;
+    }
     const thanhToanColor=thanhToan>=0?'#0a5c46':'#c0392b';
     const tienTamNote=manualPaid>0?`<br><span style="font-size:10px;color:#888;font-style:italic;">Đã trả: ${fmtMoney(manualPaid)} đ</span>`:'';
     const spName=ord?ord.sp:'—';
@@ -2640,21 +2648,24 @@ function renderTx(){
       <td>${fmtMoney(t.price)}</td>
       <td style="font-weight:700;color:#185FA5;">${fmtMoney(tienKen)} đ</td>
       <td style="color:#555;">${ordPrice?fmtMoney(ordPrice)+' đ/hộp':'—'}</td>
-      <td style="font-weight:700;color:#7a4500;">${tienTamGoc?fmtMoney(tienTam)+' đ':'—'}${tienTamNote}</td>
-      <td style="font-weight:700;color:${thanhToanColor};">${(tienKen||tienTam)?fmtMoney(thanhToan)+' đ':'—'}<br>${t.payTam===false?'<span class="badge" style="background:#fff0e0;color:#c0392b;font-size:10px;border:1px solid #f0c0a0;">⏳ Chưa TT tằm</span>':'<span class="badge" style="background:#e8f7f2;color:#0a5c46;font-size:10px;border:1px solid #7dccb0;">✓ Đã TT tằm</span>'}</td>
+      <td style="font-weight:700;color:#7a4500;">${tienTamGoc?(payTam?fmtMoney(tienTam)+' đ':'<s style="color:#ccc;font-size:12px;">'+fmtMoney(tienTamNo)+' đ</s>'):'—'}${tienTamNote}</td>
+      <td style="font-weight:700;color:${thanhToanColor};">${(tienKen||tienTam)?fmtMoney(thanhToan)+' đ':'—'}<br>${!payTam?'<span class="badge" style="background:#fff0e0;color:#c0392b;font-size:10px;border:1px solid #f0c0a0;">⏳ Chưa TT tằm</span>':'<span class="badge" style="background:#e8f7f2;color:#0a5c46;font-size:10px;border:1px solid #7dccb0;">✓ Đã TT tằm</span>'}</td>
       <td><span class="badge b-gray" style="font-size:11px;">${spName}</span></td>
       <td>${currentUser.role==='Admin'?`<button class="btn btn-sm" onclick="deleteTx(${t.id})"><i class="ti ti-trash" style="color:#c0392b;"></i></button>`:'<span style="color:#ccc;font-size:16px;" title="Chỉ Admin xoá">🔒</span>'}</td>
     </tr>`;
   }).join('');
 
-  // Tổng cuối bảng
+  // Tổng cuối bảng — tính đúng theo payTam
   const totKen=list.reduce((s,t)=>s+t.kg*t.price,0);
   const totKg=Math.round(list.reduce((s,t)=>s+t.kg,0)*100)/100;
   const totTam=list.reduce((s,t)=>{
+    if(t.payTam===false) return s; // chưa thu tiền tằm → không tính vào tổng đã trừ
     const ord=getOrdFast(t.custId,t.lotCode);
     const tienTamGoc=t.boxes*(ord?ord.price||0:0);
     const manualPaid=ord?ord.paid||0:0;
-    return s+Math.max(0,tienTamGoc-manualPaid);
+    const no=Math.max(0,tienTamGoc-manualPaid);
+    const tamPaid=(t.tamAmount!=null&&t.tamAmount>0)?Math.min(t.tamAmount,no):no;
+    return s+tamPaid;
   },0);
   const totThanhToan=totKen-totTam;
   const totalRow=list.length?`<tr style="background:#f0f7f4;font-weight:700;border-top:2px solid #7dccb0;">
@@ -3250,13 +3261,40 @@ function renderReports(){
       <div class="stat-box" style="border-color:#80b8e8;"><div class="lbl">Năng suất bình quân</div><div class="val" style="font-size:18px;color:#185FA5;">${avgNs} kg/hộp</div><div class="sub">Bình quân đã bán</div></div>`;
   }
 
-  const rows=list.map((o,i)=>{
+  pgInit('rep',25);
+  const pgR=pgSlice('rep',list);
+  _pgState['rep']._pages=pgR.pages;
+  const rows=pgR.slice.map((o,i)=>{
     const c=getCust(o.custId);
     const tx=getTx(o);
     const sold=!!tx;
     const tienKen=sold?tx.kg*tx.price:0;
-    const tienTam=o.boxes*(o.price||0);
-    const thanhToan=tienKen-tienTam;
+    const tienTamGoc=o.boxes*(o.price||0);
+    const manualPaid=o.paid||0;
+    const tienTamNo=Math.max(0,tienTamGoc-manualPaid);
+    const payTam = !tx || tx.payTam !== false;
+    // Tính thanh toán đúng theo payTam
+    let thanhToan, tienTamDisplay;
+    if(!sold){
+      thanhToan = 0; tienTamDisplay = tienTamGoc;
+    } else if(!payTam){
+      thanhToan = tienKen;  // trả toàn bộ tiền kén
+      tienTamDisplay = tienTamGoc;
+    } else {
+      const tamPaid = (tx.tamAmount!=null&&tx.tamAmount>0) ? Math.min(tx.tamAmount,tienTamNo) : tienTamNo;
+      thanhToan = tienKen - tamPaid;
+      tienTamDisplay = tienTamGoc;
+    }
+    const thColor = thanhToan>=0?'#0a5c46':'#c0392b';
+    // Trạng thái
+    let statusBadge;
+    if(!sold){
+      statusBadge = badgeUnsold(o.unsoldReason);
+    } else if(!payTam){
+      statusBadge = '<span class="badge" style="background:#fff3cd;color:#7a4500;border:1px solid #f0c040;font-size:11px;padding:3px 7px;border-radius:10px;white-space:nowrap;">⏳ Đã bán kén – Chưa TT tằm</span>';
+    } else {
+      statusBadge = '<span class="badge b-green">Đã bán kén</span>';
+    }
     return `<tr>
       <td>${pgR.start+i+1}</td><td>${sold?tx.ts:o.ts}</td>
       <td style="color:#666;">${c.code}</td>
@@ -3268,24 +3306,25 @@ function renderReports(){
       <td>${sold?tx.kg+' kg':'—'}</td>
       <td>${sold?fmtMoney(tx.price):'—'}</td>
       <td style="font-weight:700;color:#185FA5;">${sold?fmtMoney(tienKen)+' đ':'—'}</td>
-      <td style="color:#7a4500;">${tienTam?fmtMoney(tienTam)+' đ':'—'}</td>
-      <td style="font-weight:700;color:${thanhToan>=0?'#0a5c46':'#c0392b'};">${sold?fmtMoney(thanhToan)+' đ':'—'}</td>
+      <td style="color:#7a4500;">${tienTamDisplay?fmtMoney(tienTamDisplay)+' đ':'—'}</td>
+      <td style="font-weight:700;color:${thColor};">${sold?fmtMoney(thanhToan)+' đ':'—'}</td>
       <td>${o.sp}</td>
-      <td>${sold?'<span class="badge b-green">Đã bán kén</span>':badgeUnsold(o.unsoldReason)}</td>
+      <td>${statusBadge}</td>
     </tr>`;
   }).join('');
-  // Tính tổng
+  // Tính tổng — tính đúng theo payTam
   const totBoxes=list.reduce((s,o)=>Math.round((s+o.boxes)*100)/100,0);
   const totKg=list.reduce((s,o)=>{const tx=getTx(o);return s+(tx?tx.kg:0);},0);
   const totTienKen=list.reduce((s,o)=>{const tx=getTx(o);return s+(tx?tx.kg*tx.price:0);},0);
   const totTienTam=list.reduce((s,o)=>s+o.boxes*(o.price||0),0);
-  // Tổng Thanh toán = chỉ tính các đơn ĐÃ bán kén (có tx)
   const totThanhToan=list.reduce((s,o)=>{
-    const tx=getTx(o);
-    if(!tx)return s;
+    const tx=getTx(o); if(!tx) return s;
     const tienKen=tx.kg*tx.price;
-    const tienTam=o.boxes*(o.price||0);
-    return s+(tienKen-tienTam);
+    const payTam=tx.payTam!==false;
+    if(!payTam) return s+tienKen;
+    const no=Math.max(0,o.boxes*(o.price||0)-(o.paid||0));
+    const tamPaid=(tx.tamAmount!=null&&tx.tamAmount>0)?Math.min(tx.tamAmount,no):no;
+    return s+(tienKen-tamPaid);
   },0);
   const soldCount=list.filter(o=>isSold(o)).length;
   const totRow=list.length?`<tr style="background:#f0f0f0;font-weight:700;border-top:2px solid #999;">
@@ -3710,15 +3749,20 @@ function renderDebts(){
   const exportedBatches = DB.batches.filter(b => { const d = parseDMY(b.dateOut); return d && d < todayD; });
   const checksContainer = document.getElementById('debt-lot-checks');
   if(checksContainer){
-    // Lấy các lô đang được chọn để giữ nguyên khi re-render
+    // Lấy trạng thái hiện tại để giữ nguyên khi re-render
+    const allCbCur = document.getElementById('debt-lot-all');
+    const isAllChecked = !allCbCur || allCbCur.checked; // true = chọn tất cả
     const prevSelected = new Set(Array.from(document.querySelectorAll('#debt-lot-checks input[type=checkbox]:checked')).map(c=>c.value));
     checksContainer.innerHTML = exportedBatches.map(b => {
-      const checked = prevSelected.size === 0 || prevSelected.has(b.code);
+      // Nếu "Tất cả" đang tick → tick hết; nếu không → chỉ tick những cái đang được chọn
+      const checked = isAllChecked || prevSelected.has(b.code);
       return `<label style="display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f5f5f5;">
         <input type="checkbox" value="${b.code}" onchange="onLotItemChange()" ${checked?'checked':''} style="accent-color:#0a5c46;width:15px;height:15px;">
         <span>${b.code}</span>
       </label>`;
     }).join('');
+    // Đồng bộ lại checkbox "Tất cả" sau rebuild
+    if(allCbCur) allCbCur.checked = isAllChecked;
     updateLotLabel();
   }
 
