@@ -813,6 +813,14 @@ tr:hover td{background:#fafafa;}
       <div id="o-cust-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:2px solid var(--green);border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;z-index:500;box-shadow:0 6px 18px rgba(0,0,0,0.13);"></div>
     </div>
 
+    <!-- Banner cảnh báo nợ khách hàng -->
+    <div id="o-debt-warning" style="display:none;" class="fg full">
+      <div style="background:#fff3cd;border:2px solid #f0c040;border-radius:8px;padding:12px 16px;font-size:13px;color:#7a4500;display:flex;gap:10px;align-items:flex-start;">
+        <i class="ti ti-alert-triangle" style="font-size:20px;flex-shrink:0;margin-top:1px;color:#e67e22;"></i>
+        <div id="o-debt-warning-text"></div>
+      </div>
+    </div>
+
     <!-- Lô + Hộp -->
     <div class="fg">
       <label style="font-size:13px;">Lô tằm *</label>
@@ -946,6 +954,19 @@ tr:hover td{background:#fafafa;}
         </div>
       </label>
       <input type="hidden" id="tx-pay-tam" value="1"/>
+      <!-- Ô nhập số tiền tằm thanh toán (chỉ hiện khi tick) -->
+      <div id="tx-tam-amount-wrap" style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
+        <label style="font-size:12px;font-weight:600;color:#0a5c46;"><i class="ti ti-cash"></i> Số tiền tằm thanh toán (đ)</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="tx-tam-amount" type="number" min="0" step="1000" oninput="updateTxSummary()"
+            style="flex:1;padding:10px 13px;border:2px solid #7dccb0;border-radius:8px;font-size:14px;font-weight:700;color:#0a5c46;"/>
+          <button type="button" onclick="setTamAmountFull()" title="Điền đủ số tiền nợ"
+            style="padding:9px 12px;border:2px solid #7dccb0;border-radius:8px;background:#e8f7f2;color:#0a5c46;font-size:12px;cursor:pointer;white-space:nowrap;font-weight:600;">
+            <i class="ti ti-refresh"></i> Trả đủ
+          </button>
+        </div>
+        <div style="font-size:11px;color:#888;">Mặc định = tổng tiền còn nợ. Sửa xuống nếu khách chỉ trả một phần.</div>
+      </div>
       <!-- Tóm tắt tính toán -->
       <div id="tx-calc-summary" style="display:none;margin-top:8px;padding:10px 13px;background:#fffbea;border:1.5px solid #f0d060;border-radius:8px;font-size:13px;"></div>
     </div>
@@ -1385,6 +1406,7 @@ function populateModal(id){
     document.getElementById('o-cust').value='';
     document.getElementById('o-cust-selected-label').textContent='';
     document.getElementById('o-cust-dropdown').style.display='none';
+    const dw=document.getElementById('o-debt-warning'); if(dw) dw.style.display='none';
     // Lô tằm: Admin thấy tất cả lô còn hộp; Nhân viên chỉ thấy lô có dateOut >= hôm nay còn hộp
     const sl=document.getElementById('o-lot');
     const allAvailLots=DB.batches.filter(b=>getLotAvail(b.code)>0);
@@ -2020,19 +2042,11 @@ function renderOrders(){
     });
   }
 
-  // totals (chỉ tính đơn chưa hủy)
+  // totals (chỉ tính đơn chưa hủy) - dùng calcOrderDebtAmt để nhất quán với payTam
   const activeList=list.filter(o=>o.status!=='Khách hủy');
   const totalBoxes=activeList.reduce((s,o)=>s+o.boxes,0);
   const totalAmt=activeList.reduce((s,o)=>s+(o.boxes*(o.price||0)),0);
-  const totalPaid=activeList.reduce((s,o)=>{
-    const manualPaid=o.paid||0;
-    const amt=o.boxes*(o.price||0);
-    const tx=getTxFast(o.custId,o.lotCode);
-    const tienKen=tx?tx.kg*tx.price:0;
-    const remainingDebt=Math.max(0,amt-manualPaid);
-    const kenPaidActual=Math.min(tienKen,remainingDebt);
-    return s+manualPaid+kenPaidActual;
-  },0);
+  const totalPaid=activeList.reduce((s,o)=>s+calcOrderDebtAmt(o).paid,0);
   const totalDebt=totalAmt-totalPaid;
 
   pgInit('ord',25);
@@ -2042,20 +2056,16 @@ function renderOrders(){
     const c=getCustFast(o.custId);
     const cancelled=o.status==='Khách hủy';
     const cancelInfo=cancelled&&o.cancelTs?`<br><span style="font-size:10px;color:#c0392b;">Hủy: ${o.cancelTs}</span>`:'';
-    const amt=(o.boxes*(o.price||0));
-    const manualPaid=o.paid||0;
+    // Dùng calcOrderDebtAmt để kiểm tra đúng payTam
+    const { amt, manualPaid, tienKen, kenPaidActual, paid, debt, payTam } = calcOrderDebtAmt(o);
     const tx=getTxFast(o.custId,o.lotCode);
-    const tienKen=tx?tx.kg*tx.price:0;
-    const remainingDebt=Math.max(0,amt-manualPaid);
-    const kenPaidActual=Math.min(tienKen, remainingDebt); // chỉ trả tối đa số còn nợ
-    const paid=manualPaid+kenPaidActual;
-    const debt=amt-paid;
     const payIcon=o.paymentMethod==='Chuyển khoản'?'🏦':o.paymentMethod==='Tiền mặt + CK'?'🔄':'💵';
     const debtColor=debt<=0&&amt>0?'#0a5c46':debt>0?'#c0392b':'#999';
-    // Ghi chú: hiển thị tiền kén thực tế đã dùng để trả
-    const paidNote=kenPaidActual>0?`<br><span style="font-size:10px;color:#185FA5;font-style:italic;">Bán kén: +${fmtMoney(kenPaidActual)} đ</span>`:'';
-    // Ghi chú thêm nếu tiền kén < thành tiền (còn thiếu)
-    const kenShortNote=(tienKen>0&&tienKen<remainingDebt)?`<br><span style="font-size:10px;color:#c0392b;font-style:italic;">Kén chỉ đủ ${fmtMoney(tienKen)} đ</span>`:'';
+    // Ghi chú tiền kén (chỉ hiện nếu payTam=true và có tiền kén trừ vào)
+    const paidNote=kenPaidActual>0?`<br><span style="font-size:10px;color:#185FA5;font-style:italic;">Bán kén: +${fmtMoney(kenPaidActual)} đ</span>`
+      :tx&&!payTam?`<br><span style="font-size:10px;color:#c0392b;font-style:italic;">⏳ Kén chưa trả tằm</span>`:'';
+    const remainingDebt=Math.max(0,amt-manualPaid);
+    const kenShortNote=(payTam&&tienKen>0&&tienKen<remainingDebt)?`<br><span style="font-size:10px;color:#c0392b;font-style:italic;">Kén chỉ đủ ${fmtMoney(tienKen)} đ</span>`:'';
     return `<tr ondblclick="openEditOrder(${o.id})" style="cursor:pointer;${cancelled?'opacity:0.65;background:#fff5f5;':''}" title="Nhấp đúp để sửa">
       <td>${pgO.start+i+1}</td><td>${o.ts}</td><td style="color:#666;">${c.code}</td>
       <td style="font-weight:700;">${c.name}</td><td>${c.phone}</td>
@@ -2129,6 +2139,43 @@ function selectOrderCust(id,code,name,phone){
   document.getElementById('o-cust-search').value=name+' ('+phone+')';
   document.getElementById('o-cust-selected-label').textContent='✓ '+code;
   document.getElementById('o-cust-dropdown').style.display='none';
+  checkOrderCustDebt(id, name, code);
+}
+
+function checkOrderCustDebt(custId, custName, custCode){
+  const warningDiv = document.getElementById('o-debt-warning');
+  const warningText = document.getElementById('o-debt-warning-text');
+  if(!warningDiv) return;
+
+  // Lấy tất cả đơn đặt còn nợ của khách (lô đã xuất)
+  const today = new Date(); today.setHours(0,0,0,0);
+  const exportedLotCodes = new Set(
+    DB.batches.filter(b=>{ const d=parseDMY(b.dateOut); return d&&d<today; }).map(b=>b.code)
+  );
+  const debtOrders = DB.orders.filter(o =>
+    o.custId===custId &&
+    o.status!=='Khách hủy' &&
+    exportedLotCodes.has(o.lotCode) &&
+    calcOrderDebtAmt(o).debt > 0
+  );
+
+  if(debtOrders.length === 0){
+    warningDiv.style.display='none';
+    return;
+  }
+
+  const totalDebt = debtOrders.reduce((s,o)=>s+calcOrderDebtAmt(o).debt, 0);
+  const lotList = debtOrders.map(o=>`<b>${o.lotCode}</b>: ${fmtMoney(calcOrderDebtAmt(o).debt)} đ`).join(' | ');
+
+  warningText.innerHTML = `
+    <div style="font-weight:700;font-size:14px;margin-bottom:4px;">
+      ⚠️ Khách hàng <span style="color:#c0392b;">${custName} (${custCode})</span> còn nợ tiền tằm!
+    </div>
+    <div style="margin-bottom:4px;">
+      Tổng nợ: <b style="color:#c0392b;">${fmtMoney(totalDebt)} đ</b> — ${debtOrders.length} lô chưa thanh toán đủ
+    </div>
+    <div style="font-size:12px;color:#555;">${lotList}</div>`;
+  warningDiv.style.display='block';
 }
 // Close dropdown when clicking outside
 document.addEventListener('click',function(e){
@@ -2250,14 +2297,20 @@ function openEditTx(txId){
   document.getElementById('tx-kg').value = tx.kg;
   document.getElementById('tx-price').value = tx.price;
   // Điền lại trạng thái trả tiền tằm
-  const payTamVal = tx.payTam !== false ? '1' : '0'; // mặc định true nếu chưa có field
+  const payTamVal = tx.payTam !== false ? '1' : '0';
   document.getElementById('tx-pay-tam').value = payTamVal;
   const box = document.getElementById('tx-pay-tam-box');
+  const tamWrapE = document.getElementById('tx-tam-amount-wrap');
+  const tamElE = document.getElementById('tx-tam-amount');
   if(payTamVal==='1'){
     box.style.background='#0a5c46'; box.style.borderColor='#0a5c46';
     box.innerHTML='<i class="ti ti-check" style="color:#fff;font-size:13px;"></i>';
+    if(tamWrapE) tamWrapE.style.display='flex';
+    if(tamElE) tamElE.value = tx.tamAmount > 0 ? tx.tamAmount : '';
   } else {
     box.style.background='#fff'; box.style.borderColor='#ccc'; box.innerHTML='';
+    if(tamWrapE) tamWrapE.style.display='none';
+    if(tamElE) tamElE.value = '';
   }
   calcTx();
 
@@ -2275,6 +2328,10 @@ function openTxModal(){
   document.getElementById('tx-pay-tam-box').style.borderColor='#0a5c46';
   document.getElementById('tx-pay-tam-box').innerHTML='<i class="ti ti-check" style="color:#fff;font-size:13px;"></i>';
   if(document.getElementById('tx-calc-summary')) document.getElementById('tx-calc-summary').style.display='none';
+  // Hiện ô tiền tằm (mặc định tick), reset giá trị
+  const tamWrap=document.getElementById('tx-tam-amount-wrap');
+  if(tamWrap) tamWrap.style.display='flex';
+  const tamEl=document.getElementById('tx-tam-amount'); if(tamEl) tamEl.value='';
   // Ẩn/hiện phần chọn khách hàng
   document.getElementById('tx-cust-search').closest('.fg').style.display='';
   document.getElementById('tx-lot-filter-modal').closest('.fg').style.display='';
@@ -2365,6 +2422,10 @@ function selectTxCust(ordId){
     <b>${c.name}</b> | Lô: <b>${o.lotCode}</b> | Hộp đặt: <b>${o.boxes}</b>
     ${o.price?`| Tiền tằm: <b>${fmtMoney(Math.max(0,tienTam-paid))} đ</b>${paid?` (đã trả ${fmtMoney(paid)} đ)`:''}` :''}`;
   info.style.display='block';
+  // Tự điền mặc định số tiền tằm nợ vào ô
+  if(document.getElementById('tx-pay-tam')?.value==='1'){
+    setTimeout(()=>{ autoFillTamAmount(); updateTxSummary(); },50);
+  }
 }
 
 // Close tx dropdown on outside click
@@ -2389,19 +2450,52 @@ function calcTx(){
 function togglePayTam(){
   const cb=document.getElementById('tx-pay-tam');
   const box=document.getElementById('tx-pay-tam-box');
+  const wrap=document.getElementById('tx-tam-amount-wrap');
   const checked=cb.value==='1';
   cb.value=checked?'0':'1';
   if(!checked){
-    // Đang bật → giữ màu xanh
     box.style.background='#0a5c46';
     box.style.borderColor='#0a5c46';
     box.innerHTML='<i class="ti ti-check" style="color:#fff;font-size:13px;"></i>';
+    if(wrap) wrap.style.display='flex';
+    autoFillTamAmount(); // điền mặc định số nợ
   } else {
-    // Đang tắt → xám
     box.style.background='#fff';
     box.style.borderColor='#ccc';
     box.innerHTML='';
+    if(wrap) wrap.style.display='none';
+    document.getElementById('tx-tam-amount').value='';
   }
+  updateTxSummary();
+}
+
+// Hàm lấy tổng tiền nợ hiện tại của đơn đang chọn
+function getTienTamNo(){
+  const ordId=parseInt(document.getElementById('tx-cust')?.value||'0');
+  const editId=document.getElementById('tx-edit-id')?.value;
+  let tienTam=0, manualPaid=0;
+  if(ordId){
+    const ord=DB.orders.find(o=>o.id===ordId);
+    if(ord){ tienTam=ord.boxes*(ord.price||0); manualPaid=ord.paid||0; }
+  } else if(editId){
+    const tx=DB.transactions.find(t=>t.id===parseInt(editId));
+    if(tx){
+      const ord=DB.orders.find(o=>o.custId===tx.custId&&o.lotCode===tx.lotCode);
+      if(ord){ tienTam=ord.boxes*(ord.price||0); manualPaid=ord.paid||0; }
+    }
+  }
+  return Math.max(0, tienTam - manualPaid);
+}
+
+function autoFillTamAmount(){
+  const el=document.getElementById('tx-tam-amount');
+  if(!el) return;
+  const no=getTienTamNo();
+  el.value = no > 0 ? no : '';
+}
+
+function setTamAmountFull(){
+  autoFillTamAmount();
   updateTxSummary();
 }
 
@@ -2430,24 +2524,32 @@ function updateTxSummary(){
     }
   }
 
-  if(payTam && tienTam>0){
-    const con=tienKen-tienTam;
-    const conColor=con>=0?'#0a5c46':'#c0392b';
-    const conText=con>=0
-      ?`<span style="color:#0a5c46;font-weight:700;">Khách nhận lại: ${fmtMoney(con)} đ</span>`
-      :`<span style="color:#c0392b;font-weight:700;">Khách còn thiếu: ${fmtMoney(-con)} đ</span>`;
-    sumDiv.innerHTML=`
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-        <div>💰 Tiền kén: <b style="color:#185FA5;">${fmtMoney(tienKen)} đ</b></div>
-        <div>🪱 Tiền tằm: <b style="color:#7a4500;">${fmtMoney(tienTam)} đ</b><br><span style="font-size:11px;color:#888;">${tienTamLabel}</span></div>
-      </div>
-      <div style="margin-top:6px;padding-top:6px;border-top:1px solid #e0c040;">${conText}</div>`;
-    sumDiv.style.display='block';
-    descEl.textContent='Tiền kén trừ tiền tằm → khách nhận lại hoặc còn thiếu';
-  } else if(payTam && !tienTam){
-    sumDiv.innerHTML=`<span style="color:#888;">💰 Tiền kén: <b>${fmtMoney(tienKen)} đ</b> — Chưa có đơn tằm để tính</span>`;
-    sumDiv.style.display='block';
-    descEl.textContent='Tiền kén trừ tiền tằm → khách nhận lại hoặc còn thiếu';
+  if(payTam){
+    // Lấy số tiền tằm thanh toán từ ô nhập (ưu tiên) hoặc tính mặc định
+    const inputAmt = parseFloat(document.getElementById('tx-tam-amount')?.value)||0;
+    const tamPayAmt = inputAmt > 0 ? inputAmt : tienTam;
+    const tamNo = getTienTamNo();
+
+    if(tienTam>0 || tamNo>0){
+      const con = tienKen - tamPayAmt;
+      const conText = con>=0
+        ?`<span style="color:#0a5c46;font-weight:700;">✓ Khách nhận lại: ${fmtMoney(con)} đ</span>`
+        :`<span style="color:#c0392b;font-weight:700;">⚠ Khách còn thiếu: ${fmtMoney(-con)} đ</span>`;
+      const partNote = (tamPayAmt < tamNo && tamNo>0)
+        ?`<br><span style="font-size:11px;color:#e67e22;">⚠ Trả một phần — còn nợ thêm: ${fmtMoney(tamNo-tamPayAmt)} đ</span>` : '';
+      sumDiv.innerHTML=`
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <div>💰 Tiền kén: <b style="color:#185FA5;">${fmtMoney(tienKen)} đ</b></div>
+          <div>🪱 Tiền tằm TT: <b style="color:#7a4500;">${fmtMoney(tamPayAmt)} đ</b>${partNote}<br><span style="font-size:11px;color:#888;">${tienTamLabel} | Nợ: ${fmtMoney(tamNo)} đ</span></div>
+        </div>
+        <div style="margin-top:6px;padding-top:6px;border-top:1px solid #e0c040;">${conText}</div>`;
+      sumDiv.style.display='block';
+      descEl.textContent='Tiền kén trừ tiền tằm → khách nhận lại hoặc còn thiếu';
+    } else {
+      sumDiv.innerHTML=`<span style="color:#888;">💰 Tiền kén: <b>${fmtMoney(tienKen)} đ</b> — Chưa có đơn tằm để tính</span>`;
+      sumDiv.style.display='block';
+      descEl.textContent='Tiền kén trừ tiền tằm → khách nhận lại hoặc còn thiếu';
+    }
   } else {
     sumDiv.innerHTML=`<span style="color:#c0392b;"><i class="ti ti-clock"></i> Khách <b>chưa trả tiền tằm</b> — Tiền kén: <b>${fmtMoney(tienKen)} đ</b> (trả toàn bộ cho khách)</span>`;
     sumDiv.style.display='block';
@@ -2467,6 +2569,8 @@ function saveTx(){
     tx.kg=kg;
     tx.price=price;
     tx.payTam = document.getElementById('tx-pay-tam').value === '1';
+    const tamAmtEdit = parseFloat(document.getElementById('tx-tam-amount')?.value)||0;
+    tx.tamAmount = tx.payTam ? (tamAmtEdit > 0 ? tamAmtEdit : null) : 0;
     closeModal('modal-tx'); renderTx(); saveDB();
     const payNote2 = tx.payTam ? '✓ Đã trừ tiền tằm' : '⚠ Chưa trả tiền tằm';
     showToast(`Đã cập nhật: ${kg}kg kén — ${fmtMoney(kg*price)} đ | ${payNote2}`,'success');
@@ -2477,7 +2581,9 @@ function saveTx(){
     const ord=DB.orders.find(o=>o.id===ordId);
     if(!ord){showToast('Không tìm thấy đơn đặt!','error');return;}
     const payTam = document.getElementById('tx-pay-tam').value === '1';
-    DB.transactions.push({id:DB.nextId.tx++,ts:nowTs(),custId:ord.custId,lotCode:ord.lotCode,boxes:ord.boxes,kg,price,payTam});
+    const tamAmtInput = parseFloat(document.getElementById('tx-tam-amount')?.value)||0;
+    const tamAmount = payTam ? (tamAmtInput > 0 ? tamAmtInput : null) : 0; // null = trả đủ (tính tự động)
+    DB.transactions.push({id:DB.nextId.tx++,ts:nowTs(),custId:ord.custId,lotCode:ord.lotCode,boxes:ord.boxes,kg,price,payTam,tamAmount});
     closeModal('modal-tx'); renderTx(); saveDB();
     const payNote = payTam ? '✓ Đã trừ tiền tằm' : '⚠ Chưa trả tiền tằm';
     showToast(`Đã chốt giao dịch: ${kg}kg kén — ${fmtMoney(kg*price)} đ | ${payNote}`,'success');
@@ -3495,7 +3601,15 @@ function calcOrderDebtAmt(o){
   // Chỉ dùng tiền kén trừ nợ nếu payTam=true (mặc định true nếu chưa có field)
   const payTam = !tx || tx.payTam !== false;
   const remainingDebt = Math.max(0, amt - manualPaid);
-  const kenPaidActual = payTam ? Math.min(tienKen, remainingDebt) : 0;
+  let kenPaidActual = 0;
+  if(payTam){
+    // Nếu có tamAmount (số tiền tằm thanh toán cụ thể) thì dùng, không thì dùng min(tienKen, nợ)
+    if(tx && tx.tamAmount != null && tx.tamAmount > 0){
+      kenPaidActual = Math.min(tx.tamAmount, remainingDebt);
+    } else {
+      kenPaidActual = Math.min(tienKen, remainingDebt);
+    }
+  }
   const paid = manualPaid + kenPaidActual;
   const debt = amt - paid;
   return { amt, manualPaid, tienKen, kenPaidActual, paid, debt, payTam };
