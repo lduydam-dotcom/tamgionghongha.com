@@ -323,6 +323,7 @@ tr:hover td{background:#fafafa;}
           <div class="toolbar">
             <button class="btn btn-primary" onclick="openModal('modal-cust')"><i class="ti ti-plus"></i> Thêm khách hàng</button>
             <input type="text" id="cust-search" placeholder="Tìm theo tên, SĐT, CCCD..." oninput="pgReset('cust');renderCustomers()"/>
+            <button class="btn" onclick="exportCustomersExcel()" title="Xuất danh sách khách hàng ra Excel" style="border-color:#1d6f42;color:#1d6f42;margin-left:auto;"><i class="ti ti-file-spreadsheet"></i> Excel</button>
           </div>
           <div class="card"><div class="tbl-wrap"><table id="cust-tbl"></table></div>
           <div id="cust-pgbar" class="pg-nav" style="display:none;"></div>
@@ -3990,6 +3991,49 @@ function printDebts(){
   </body></html>`);
   win.document.close();
   setTimeout(()=>win.print(), 400);
+}
+
+// ---- Xuất Excel danh sách khách hàng ----
+function exportCustomersExcel(){
+  const q=(document.getElementById('cust-search')?.value||'').toLowerCase();
+  let list=DB.customers;
+  // Nhân viên chỉ thấy khách hàng của điểm bán mình
+  if(currentUser.role==='Nhân viên'){
+    const mysp=currentUser.sp;
+    list=list.filter(c=>c.sp===mysp);
+  }
+  if(q)list=list.filter(c=>
+    c.name.toLowerCase().includes(q)||
+    c.phone.includes(q)||
+    c.cccd.includes(q)||
+    (c.sp||'').toLowerCase().includes(q)
+  );
+  if(!list.length){showToast('Không có dữ liệu để xuất!','warn');return;}
+
+  const BOM='\uFEFF';
+  const header='"STT","Mã KH","Họ và tên","Số điện thoại","Số CCCD","Địa chỉ","Điểm bán","Ghi chú"';
+  const rows=list.map((c,i)=>{
+    // Giữ số điện thoại & CCCD dạng text để không mất số 0 đầu
+    const phone=/^0\d+$/.test(c.phone.trim()) ? `="` + c.phone.trim() + `"` : `"${c.phone}"`;
+    const cccd=/^\d+$/.test((c.cccd||'').trim()) ? `="` + c.cccd.trim() + `"` : `"${c.cccd}"`;
+    return [
+      `"${i+1}"`,
+      `"${c.code}"`,
+      `"${c.name.replace(/"/g,'""')}"`,
+      phone,
+      cccd,
+      `"${(c.addr||'').replace(/"/g,'""')}"`,
+      `"${(c.sp||'').replace(/"/g,'""')}"`,
+      `"${(c.note||'').replace(/"/g,'""')}"`
+    ].join(',');
+  });
+  const totalRow=`"","","TỔNG CỘNG: ${list.length} khách hàng","","","","",""`;
+  const csv=BOM+[header,...rows,totalRow].join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=`KhachHang_HongHa_${new Date().toLocaleDateString('vi-VN').replace(/\//g,'-')}.csv`;
+  a.click();
+  showToast(`Đã xuất <b>${list.length}</b> khách hàng ra Excel!`,'success');
 }
 
 // ---- Xuất Excel danh sách nợ ----
