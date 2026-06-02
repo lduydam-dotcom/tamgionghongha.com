@@ -3383,10 +3383,35 @@ function badgeUnsold(reason){
 function getFilteredOrders(){
   const lf=document.getElementById('rpt-lot').value;
   const sf=(currentUser.role==='Admin'||currentUser.role==='Quản Lý')?document.getElementById('rpt-sp').value:currentUser.sp;
+  const fromVal=document.getElementById('rpt-from')?.value;
+  const toVal=document.getElementById('rpt-to')?.value;
+  const fromDate=fromVal?new Date(fromVal+'T00:00:00'):null;
+  const toDate=toVal?new Date(toVal+'T23:59:59'):null;
+
   let ordAll=DB.orders.filter(o=>o.status==='Xác nhận');
   if(currentUser.role==='Nhân viên') ordAll=ordAll.filter(o=>o.sp===currentUser.sp);
   else if(sf) ordAll=ordAll.filter(o=>o.sp===sf);
   if(lf) ordAll=ordAll.filter(o=>o.lotCode===lf);
+
+  // Lọc theo ngày: ưu tiên ngày bán kén (tx.ts) nếu đã bán, ngược lại dùng ngày đặt tằm (o.ts)
+  if(fromDate||toDate){
+    ordAll=ordAll.filter(o=>{
+      const tx=DB.transactions.find(t=>t.custId===o.custId&&t.lotCode===o.lotCode);
+      const tsStr=tx?tx.ts:o.ts;
+      if(!tsStr) return false;
+      let d;
+      if(/^\d{2}\/\d{2}\/\d{4}/.test(tsStr)){
+        const parts=tsStr.split(/[\/\s]/);
+        d=new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
+      } else {
+        d=new Date(tsStr);
+      }
+      if(isNaN(d)) return false;
+      if(fromDate&&d<fromDate) return false;
+      if(toDate&&d>toDate) return false;
+      return true;
+    });
+  }
   return ordAll;
 }
 
@@ -3464,8 +3489,12 @@ function renderReports(){
     } else {
       statusBadge = '<span class="badge b-green">Đã bán kén</span>';
     }
+    // Cột ngày giờ: hiển thị ngày bán kén (tx.ts) nếu đã bán, ngày đặt tằm nếu chưa bán
+    const ngayHienThi = sold
+      ? `<span title="Ngày bán kén">${tx.ts}</span>`
+      : `<span style="color:#b8620a;" title="Ngày đặt tằm (chưa bán kén)">${o.ts}</span>`;
     return `<tr>
-      <td>${pgR.start+i+1}</td><td>${sold?tx.ts:o.ts}</td>
+      <td>${pgR.start+i+1}</td><td>${ngayHienThi}</td>
       <td style="color:#666;">${c.code}</td>
       <td style="font-weight:700;">${c.name}</td>
       <td>${c.phone}</td>
@@ -3508,7 +3537,7 @@ function renderReports(){
   </tr>`:'';
 
   document.getElementById('rpt-tbl').innerHTML=`<thead><tr>
-    <th>#</th><th>Ngày giờ</th><th>Mã KH</th><th>Họ và tên</th><th>Điện thoại</th><th>Địa chỉ</th>
+    <th>#</th><th title="Ngày bán kén (hoặc ngày đặt nếu chưa bán)">Ngày bán kén</th><th>Mã KH</th><th>Họ và tên</th><th>Điện thoại</th><th>Địa chỉ</th>
     <th>Lô tằm</th><th>Hộp đặt</th><th>KL kén</th><th>Giá kén</th>
     <th style="color:#185FA5;">Tiền kén</th>
     <th style="color:#7a4500;">Tiền tằm</th>
