@@ -645,6 +645,10 @@ tr:hover td{background:#fafafa;}
       <input id="eo-boxes" type="number" min="0.01" step="0.01" oninput="calcEditOrderDebt()"/>
     </div>
     <div class="fg">
+      <label>Đơn giá tằm (đ/hộp)</label>
+      <input id="eo-price" type="number" min="0" step="1000" placeholder="Nhập đơn giá..." oninput="calcEditOrderDebt()"/>
+    </div>
+    <div class="fg">
       <label>Trạng thái *</label>
       <select id="eo-status" onchange="toggleCancelFields()">
         <option value="Chờ xác nhận">Chờ xác nhận</option>
@@ -2875,10 +2879,11 @@ function openEditOrder(id){
   document.getElementById('eo-lot-info').textContent=o.lotCode;
   document.getElementById('eo-sp-info').textContent=o.sp;
   document.getElementById('eo-ts-info').textContent=o.ts;
-  const amt=o.boxes*(o.price||0);
-  document.getElementById('eo-amt-info').textContent=o.price?`${fmtMoney(o.price)} đ/hộp → ${fmtMoney(amt)} đ`:'Chưa có đơn giá';
+  // eo-amt-info sẽ được cập nhật realtime qua calcEditOrderDebt, ẩn đi phần tĩnh
+  document.getElementById('eo-amt-info').textContent='';
   // editable fields
   document.getElementById('eo-boxes').value=o.boxes;
+  document.getElementById('eo-price').value=o.price||'';
   document.getElementById('eo-status').value=o.status;
   document.getElementById('eo-note').value=o.note||'';
   document.getElementById('eo-cancel-reason').value=o.cancelReason||'';
@@ -2905,13 +2910,18 @@ function openEditOrder(id){
 }
 
 function calcEditOrderDebt(){
-  const id=parseInt(document.getElementById('eo-id').value);
-  const o=DB.orders.find(x=>x.id===id);
   const boxes=parseFloat(document.getElementById('eo-boxes').value)||0;
-  const price=o?o.price||0:0;
+  const price=parseFloat(document.getElementById('eo-price').value)||0;
   const paid=parseFloat(document.getElementById('eo-paid').value)||0;
   const total=boxes*price;
   const debtEl=document.getElementById('eo-debt');
+  // Cập nhật dòng Thành tiền trong info box
+  const amtEl=document.getElementById('eo-amt-info');
+  if(amtEl){
+    if(price>0&&boxes>0) amtEl.textContent=`${fmtMoney(price)} đ/hộp × ${boxes} hộp = ${fmtMoney(total)} đ`;
+    else if(price>0) amtEl.textContent=`${fmtMoney(price)} đ/hộp`;
+    else amtEl.textContent='Chưa có đơn giá';
+  }
   if(total>0){
     const debt=total-paid;
     debtEl.value=fmtMoney(debt)+' đ';
@@ -2934,6 +2944,7 @@ function saveEditOrder(){
   const o=DB.orders.find(x=>x.id===id);
   if(!o)return;
   const newBoxes=parseFloat(parseFloat(document.getElementById('eo-boxes').value||o.boxes).toFixed(2));
+  const newPrice=parseFloat(document.getElementById('eo-price').value)||o.price||0;
   const status=document.getElementById('eo-status').value;
   const note=document.getElementById('eo-note').value.trim();
   const cancelReason=document.getElementById('eo-cancel-reason').value.trim();
@@ -2955,6 +2966,7 @@ function saveEditOrder(){
     if(extraNeeded>avail){showToast(`Lô ${o.lotCode} chỉ còn <b>${avail} hộp</b>! Không thể tăng số hộp.`,'error');return;}
   }
   o.boxes=newBoxes;
+  o.price=newPrice;
   o.status=status;
   o.note=note;
   o.cancelTs=cancelTs;
