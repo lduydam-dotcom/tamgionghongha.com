@@ -356,6 +356,9 @@ tr:hover td{background:#fafafa;}
             <select id="ord-lot-filter" onchange="pgReset('ord');renderOrders()"><option value="">Tất cả lô</option></select>
             <select id="ord-sp-filter" onchange="pgReset('ord');renderOrders()"><option value="">Tất cả điểm bán</option></select>
             <input type="date" id="ord-date-filter" onchange="pgReset('ord');renderOrders()"/>
+            <button class="btn" onclick="openPrintPhatTamModal()" style="padding:9px 13px;border-color:#0a5c46;color:#0a5c46;white-space:nowrap;flex-shrink:0;">
+              <i class="ti ti-printer"></i> In phát tằm
+            </button>
           </div>
           <div class="card"><div class="tbl-wrap"><table id="ord-tbl"></table></div>
           <div id="ord-pgbar" class="pg-nav" style="display:none;"></div>
@@ -4396,6 +4399,182 @@ function exportDebtsExcel(){
 
 
 
+
+// ============================================================
+// IN DANH SÁCH PHÁT TẰM GIỐNG
+// ============================================================
+function openPrintPhatTamModal(){
+  // Lấy bộ lọc hiện tại để pre-fill
+  const lf = document.getElementById('ord-lot-filter').value;
+  const sf = document.getElementById('ord-sp-filter').value ||
+             (currentUser.role === 'Nhân viên' ? currentUser.sp : '');
+
+  // Build dropdown lô (chỉ lô đang có trong filter)
+  const lots = [...new Set(DB.orders.filter(o=>o.status!=='Khách hủy').map(o=>o.lotCode))].sort();
+  const lotOpts = lots.map(c=>`<option value="${c}" ${c===lf?'selected':''}>${c}</option>`).join('');
+
+  // Build dropdown điểm bán
+  const sps = DB.salespoints.map(s=>s.name);
+  const spOpts = '<option value="">Tất cả điểm bán</option>' +
+    sps.map(s=>`<option value="${s}" ${s===sf?'selected':''}>${s}</option>`).join('');
+
+  const overlay = document.createElement('div');
+  overlay.id = 'phat-tam-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:14px;padding:28px 32px;min-width:360px;max-width:460px;box-shadow:0 8px 32px rgba(0,0,0,.2);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;border-bottom:2px solid #e0e0e0;padding-bottom:14px;">
+        <div style="width:36px;height:36px;border-radius:8px;background:#e8f7f2;display:flex;align-items:center;justify-content:center;">
+          <i class="ti ti-printer" style="font-size:20px;color:#0a5c46;"></i>
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:16px;color:#0a5c46;">In danh sách phát tằm giống</div>
+          <div style="font-size:12px;color:#888;">Điền thông tin để in theo mẫu</div>
+        </div>
+        <span onclick="document.getElementById('phat-tam-overlay').remove()"
+          style="margin-left:auto;cursor:pointer;font-size:20px;color:#aaa;line-height:1;">&times;</span>
+      </div>
+
+      <div style="display:grid;gap:14px;">
+        <div>
+          <label style="font-size:13px;font-weight:600;color:#333;display:block;margin-bottom:5px;">Lô tằm số *</label>
+          <select id="pt-lot" style="width:100%;padding:9px 10px;border:2px solid #ddd;border-radius:8px;font-size:14px;">
+            <option value="">-- Chọn lô tằm --</option>${lotOpts}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:13px;font-weight:600;color:#333;display:block;margin-bottom:5px;">Điểm bán</label>
+          <select id="pt-sp" style="width:100%;padding:9px 10px;border:2px solid #ddd;border-radius:8px;font-size:14px;">${spOpts}</select>
+        </div>
+        <div>
+          <label style="font-size:13px;font-weight:600;color:#333;display:block;margin-bottom:5px;">
+            Số khay / hộp
+            <span style="font-weight:400;color:#888;font-size:12px;">(nhân với số hộp mỗi khách để ra số khay)</span>
+          </label>
+          <input id="pt-khay" type="number" min="1" step="1" placeholder="Ví dụ: 10 khay/hộp"
+            style="width:100%;padding:9px 10px;border:2px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;"/>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
+        <button onclick="document.getElementById('phat-tam-overlay').remove()"
+          style="padding:9px 20px;border:2px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:14px;">Huỷ</button>
+        <button onclick="doPrintPhatTam()"
+          style="padding:9px 20px;border:none;border-radius:8px;background:#0a5c46;color:#fff;font-weight:700;font-size:14px;cursor:pointer;">
+          <i class="ti ti-printer"></i> In ngay
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  // Close khi click ra ngoài
+  overlay.addEventListener('click', e => { if(e.target === overlay) overlay.remove(); });
+  setTimeout(()=>document.getElementById('pt-lot')?.focus(), 100);
+}
+
+function doPrintPhatTam(){
+  const lotCode = document.getElementById('pt-lot')?.value;
+  const spFilter = document.getElementById('pt-sp')?.value;
+  const khayPerHop = parseFloat(document.getElementById('pt-khay')?.value) || 0;
+
+  if(!lotCode){ alert('Vui lòng chọn lô tằm!'); return; }
+
+  // Lấy đơn hàng theo lô và điểm bán, bỏ đơn hủy
+  let orders = DB.orders.filter(o => o.lotCode === lotCode && o.status !== 'Khách hủy');
+  if(spFilter) orders = orders.filter(o => o.sp === spFilter);
+  if(!orders.length){ alert('Không có đơn hàng phù hợp!'); return; }
+
+  // Sắp xếp theo tên khách
+  orders.sort((a,b) => getCustFast(a.custId).name.localeCompare(getCustFast(b.custId).name, 'vi'));
+
+  // Lấy thông tin lô
+  const batch = DB.batches.find(b => b.code === lotCode) || {};
+  const dateOut = batch.dateOut || '';
+  const spLabel = spFilter || 'Tất cả điểm bán';
+
+  // Tổng
+  const totalBoxes = orders.reduce((s,o)=>s+o.boxes,0);
+  const totalKhay  = khayPerHop > 0 ? orders.reduce((s,o)=>s+(o.boxes*khayPerHop),0) : null;
+
+  const rows = orders.map((o,i)=>{
+    const c = getCustFast(o.custId);
+    const khay = khayPerHop > 0 ? (o.boxes * khayPerHop) : '';
+    return `<tr>
+      <td style="text-align:center;">${i+1}</td>
+      <td style="font-weight:600;">${c.name}</td>
+      <td>${(c.addr||'').replace(/</g,'&lt;')}</td>
+      <td>${c.phone}</td>
+      <td style="text-align:center;font-weight:700;">${o.boxes}</td>
+      <td style="text-align:center;font-weight:700;">${khay}</td>
+      <td></td>
+      <td></td>
+      <td>${o.note||''}</td>
+    </tr>`;
+  }).join('');
+
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>Danh sách phát tằm giống – ${lotCode}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:Arial,sans-serif;font-size:13px;margin:18px 24px;}
+    .company{font-weight:700;font-size:13px;text-transform:uppercase;}
+    .address{font-size:12px;margin-bottom:10px;}
+    h2{text-align:center;font-size:17px;text-transform:uppercase;letter-spacing:1px;margin:10px 0 4px;}
+    .subtitle{text-align:center;font-size:13px;margin-bottom:10px;font-weight:600;}
+    .meta{display:flex;justify-content:space-between;font-size:13px;margin-bottom:10px;font-weight:600;}
+    table{width:100%;border-collapse:collapse;font-size:12.5px;}
+    th,td{border:1px solid #555;padding:7px 8px;vertical-align:middle;}
+    th{background:#f0f0f0;font-weight:700;text-align:center;text-transform:uppercase;font-size:12px;}
+    td{min-height:32px;}
+    .total-row td{font-weight:700;background:#f5f5f5;}
+    .sign{display:flex;justify-content:space-between;margin-top:28px;font-size:13px;font-weight:700;}
+    .sign div{text-align:center;min-width:180px;}
+    .sign .sign-name{margin-top:60px;font-style:italic;font-weight:400;}
+    @media print{body{margin:10px 16px;} @page{size:A4 landscape;margin:12mm;}}
+  </style>
+  </head><body>
+    <div class="company">CÔNG TY CỔ PHẦN KÉN TẰM HỒNG HÀ</div>
+    <div class="address">THÔN HOÀNG ÂN, XÃ CHƯ PRÔNG, GIA LAI</div>
+    <h2>DANH SÁCH PHÁT TẰM GIỐNG</h2>
+    <div class="subtitle">ĐỊA ĐIỂM PHÁT TẰM: ${spLabel.toUpperCase()}</div>
+    <div class="meta">
+      <span>NGÀY XUẤT: ${dateOut || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</span>
+      <span>LÔ TẰM SỐ: ${lotCode}</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:40px;">STT</th>
+          <th>TÊN KHÁCH HÀNG</th>
+          <th>ĐỊA CHỈ</th>
+          <th style="width:110px;">SỐ ĐIỆN THOẠI</th>
+          <th style="width:80px;">SỐ LƯỢNG HỘP</th>
+          <th style="width:90px;">SỐ LƯỢNG KHAY</th>
+          <th style="width:100px;">THỜI GIAN XUẤT</th>
+          <th style="width:110px;">KHÁCH HÀNG KÝ TÊN</th>
+          <th style="width:110px;">GHI CHÚ</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+        <tr class="total-row">
+          <td colspan="3" style="text-align:center;">TỔNG:</td>
+          <td></td>
+          <td style="text-align:center;">${totalBoxes}</td>
+          <td style="text-align:center;">${totalKhay !== null ? totalKhay : ''}</td>
+          <td></td><td></td><td></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="sign">
+      <div>NGƯỜI LẬP<div class="sign-name">&nbsp;</div></div>
+      <div>QUẢN LÝ<div class="sign-name">&nbsp;</div></div>
+    </div>
+  <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`);
+  win.document.close();
+  document.getElementById('phat-tam-overlay')?.remove();
+}
 </script>
 </body>
 </html>
