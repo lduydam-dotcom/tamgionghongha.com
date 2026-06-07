@@ -322,6 +322,9 @@ tr:hover td{background:#fafafa;}
         <div id="pg-customers" class="pg" style="display:none;">
           <div class="toolbar">
             <button class="btn btn-primary" onclick="openModal('modal-cust')"><i class="ti ti-plus"></i> Thêm khách hàng</button>
+            <select id="cust-sp-filter" onchange="pgReset('cust');renderCustomers()"
+              style="display:none;padding:9px 10px;border:2px solid #ddd;border-radius:8px;font-size:13px;min-width:150px;">
+            </select>
             <input type="text" id="cust-search" placeholder="Tìm theo tên, SĐT, CCCD..." oninput="pgReset('cust');renderCustomers()"/>
             <button class="btn" onclick="exportCustomersExcel()" title="Xuất danh sách khách hàng ra Excel" style="border-color:#1d6f42;color:#1d6f42;margin-left:auto;"><i class="ti ti-file-spreadsheet"></i> Excel</button>
           </div>
@@ -625,6 +628,12 @@ tr:hover td{background:#fafafa;}
     <div class="fg"><label>Số điện thoại *</label><input id="ec-phone" type="text"/></div>
     <div class="fg"><label>Số CCCD *</label><input id="ec-cccd" type="text"/></div>
     <div class="fg"><label>Điểm bán *</label><select id="ec-sp"></select></div>
+    <div class="fg"><label>Đối tượng</label>
+      <select id="ec-type" style="width:100%;padding:9px 10px;border:2px solid #ddd;border-radius:8px;font-size:14px;">
+        <option value="Dân">Dân</option>
+        <option value="Đại Lý">Đại Lý</option>
+      </select>
+    </div>
     <div class="fg full"><label>Địa chỉ</label><input id="ec-addr" type="text"/></div>
     <div class="fg full"><label>Ghi chú</label><input id="ec-note" type="text"/></div>
   </div>
@@ -759,6 +768,12 @@ tr:hover td{background:#fafafa;}
     <div class="fg"><label>Số điện thoại *</label><input id="c-phone" type="text" placeholder="09xx..."/></div>
     <div class="fg"><label>Số CCCD *</label><input id="c-cccd" type="text" placeholder="12 chữ số"/></div>
     <div class="fg"><label>Điểm bán *</label><select id="c-sp"></select></div>
+    <div class="fg"><label>Đối tượng</label>
+      <select id="c-type" style="width:100%;padding:9px 10px;border:2px solid #ddd;border-radius:8px;font-size:14px;">
+        <option value="Dân">Dân</option>
+        <option value="Đại Lý">Đại Lý</option>
+      </select>
+    </div>
     <div class="fg full"><label>Địa chỉ</label><input id="c-addr" type="text" placeholder="Xã, huyện, tỉnh"/></div>
     <div class="fg full"><label>Ghi chú</label><input id="c-note" type="text" placeholder="Ghi chú thêm"/></div>
   </div>
@@ -780,6 +795,14 @@ tr:hover td{background:#fafafa;}
     <div class="fg"><label>Ngày nhập trứng *</label><input id="b-in" type="date"/></div>
     <div class="fg"><label>Ngày xuất tằm *</label><input id="b-out" type="date"/></div>
   </div>
+
+    <!-- Số lượng khay -->
+    <div class="fg full" style="border-top:1px solid #eee;padding-top:12px;margin-top:2px;">
+      <label style="font-weight:700;color:#0a5c46;font-size:13px;"><i class="ti ti-stack-2"></i> Số lượng khay / hộp</label>
+    </div>
+    <div class="fg"><label>Khay chuẩn / hộp</label><input id="b-khay-std" type="number" min="0" step="0.5" placeholder="VD: 4"/></div>
+    <div class="fg"><label>Khay Đại Lý / hộp</label><input id="b-khay-dl" type="number" min="0" step="0.5" placeholder="VD: 5"/></div>
+    <div class="fg"><label>Khay Dân / hộp</label><input id="b-khay-dan" type="number" min="0" step="0.5" placeholder="VD: 4"/></div>
   <div class="modal-ftr">
     <button class="btn" onclick="closeModal('modal-batch')">Huỷ</button>
     <button class="btn btn-primary" onclick="saveBatch()"><i class="ti ti-check"></i> Lưu lô tằm</button>
@@ -809,6 +832,14 @@ tr:hover td{background:#fafafa;}
     </div>
     <div class="fg"><label>Ngày nhập trứng *</label><input id="eb-in" type="date"/></div>
     <div class="fg"><label>Ngày xuất tằm *</label><input id="eb-out" type="date" oninput="calcEditBoxes()"/></div>
+
+    <!-- Số lượng khay -->
+    <div class="fg full" style="border-top:1px solid #eee;padding-top:12px;margin-top:2px;">
+      <label style="font-weight:700;color:#0a5c46;font-size:13px;"><i class="ti ti-stack-2"></i> Số lượng khay / hộp</label>
+    </div>
+    <div class="fg"><label>Khay chuẩn / hộp</label><input id="eb-khay-std" type="number" min="0" step="0.5" placeholder="VD: 4"/></div>
+    <div class="fg"><label>Khay Đại Lý / hộp</label><input id="eb-khay-dl" type="number" min="0" step="0.5" placeholder="VD: 5"/></div>
+    <div class="fg"><label>Khay Dân / hộp</label><input id="eb-khay-dan" type="number" min="0" step="0.5" placeholder="VD: 4"/></div>
     <div class="fg full" style="background:#e8f7f2;border-radius:6px;padding:8px 12px;font-size:12px;color:#0a5c46;">
       <i class="ti ti-calendar"></i> Ngày dự kiến thu kén: <b id="eb-harvest-preview">—</b>
     </div>
@@ -1380,7 +1411,7 @@ function doLogout(){
 // NAVIGATION
 // ============================================================
 const PAGE_TITLES={'dashboard':'Trang chủ','users':'Quản lý user','salespoints':'Điểm bán tằm','customers':'Khách hàng','batches':'Quản lý lô tằm','orders':'Đặt tằm','transactions':'Bán kén / Thu tiền tằm','reports':'Báo cáo & Thống kê','backup':'Backup dữ liệu','debts':'Quản lý công nợ'};
-const RENDERERS={'dashboard':renderDashboard,'users':renderUsers,'salespoints':renderSP,'customers':renderCustomers,'batches':renderBatches,'orders':renderOrders,'transactions':renderTx,'reports':renderReports,'backup':renderBackup,'debts':renderDebts};
+const RENDERERS={'dashboard':renderDashboard,'users':renderUsers,'salespoints':renderSP,'customers':()=>{initCustSpFilter();renderCustomers();},'batches':renderBatches,'orders':renderOrders,'transactions':renderTx,'reports':renderReports,'backup':renderBackup,'debts':renderDebts};
 function goPage(id,el){
   document.querySelectorAll('.pg').forEach(p=>p.style.display='none');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -1767,11 +1798,14 @@ const PGREFRESH = {
 
 function renderCustomers(){
   const q=(document.getElementById('cust-search')?.value||'').toLowerCase();
+  const spFilterEl=document.getElementById('cust-sp-filter');
+  const spFilter=spFilterEl?.value||'';
   let list=DB.customers;
   // Nhân viên chỉ thấy khách hàng của điểm bán mình phụ trách
   if(currentUser.role==='Nhân viên'){
-    const mysp=currentUser.sp;
-    list=list.filter(c=>c.sp===mysp);
+    list=list.filter(c=>c.sp===currentUser.sp);
+  } else if(spFilter){
+    list=list.filter(c=>c.sp===spFilter);
   }
   if(q)list=list.filter(c=>
     c.name.toLowerCase().includes(q)||
@@ -1786,11 +1820,24 @@ function renderCustomers(){
     <td>${pg.start+i+1}</td><td style="color:#666;">${c.code}</td><td style="font-weight:700;">${c.name}</td>
     <td>${c.phone}</td><td>${c.cccd}</td><td>${c.addr}</td>
     <td><span class="badge b-gray" style="font-size:11px;">${c.sp||'—'}</span></td>
+    <td style="text-align:center;">${c.type==='Đại Lý'
+      ? '<span class="badge b-amber" style="font-size:11px;font-weight:700;">Đại Lý</span>'
+      : '<span class="badge b-gray" style="font-size:11px;">Dân</span>'}</td>
     <td style="color:#888;">${c.note||''}</td>
     <td><button class="btn btn-sm" onclick="event.stopPropagation();deleteCust(${c.id})"><i class="ti ti-trash" style="color:#c0392b;"></i></button></td>
   </tr>`).join('');
-  document.getElementById('cust-tbl').innerHTML=`<thead><tr><th>#</th><th>Mã KH</th><th>Họ và tên</th><th>Số điện thoại</th><th>Số CCCD</th><th>Địa chỉ</th><th>Điểm bán</th><th>Ghi chú</th><th>Xoá</th></tr></thead><tbody>${rows||'<tr><td colspan="9" style="text-align:center;padding:20px;color:#999;">Không tìm thấy</td></tr>'}</tbody>`;
+  document.getElementById('cust-tbl').innerHTML=`<thead><tr><th>#</th><th>Mã KH</th><th>Họ và tên</th><th>Số điện thoại</th><th>Số CCCD</th><th>Địa chỉ</th><th>Điểm bán</th><th style="text-align:center;">Đối tượng</th><th>Ghi chú</th><th>Xoá</th></tr></thead><tbody>${rows||'<tr><td colspan="10" style="text-align:center;padding:20px;color:#999;">Không tìm thấy</td></tr>'}</tbody>`;
   pgRender('cust-pgbar','cust',pg);
+}
+function initCustSpFilter(){
+  const el=document.getElementById('cust-sp-filter');
+  if(!el) return;
+  const isAdmin=(currentUser.role==='Admin'||currentUser.role==='Quản Lý');
+  if(!isAdmin){ el.style.display='none'; return; }
+  el.style.display='';
+  const sps=DB.salespoints.map(s=>s.name);
+  el.innerHTML='<option value="">Tất cả điểm bán</option>'+
+    sps.map(s=>`<option value="${s}">${s}</option>`).join('');
 }
 function saveCust(){
   const name=document.getElementById('c-name').value.trim();
@@ -1799,6 +1846,7 @@ function saveCust(){
   const sp=document.getElementById('c-sp').value;
   const addr=document.getElementById('c-addr').value.trim();
   const note=document.getElementById('c-note').value.trim();
+  const type=document.getElementById('c-type')?.value||'Dân';
   if(!name||!phone||!cccd){showToast('Vui lòng điền Tên, SĐT và CCCD!','warn');return;}
   if(!sp){showToast('Vui lòng chọn Điểm bán!','warn');return;}
   if(!/^[0-9]{9,12}$/.test(cccd)){showToast('Số CCCD phải là 9–12 chữ số!','warn');return;}
@@ -1816,7 +1864,7 @@ function saveCust(){
   }
   const id=DB.nextId.cust++;
   const code='KH-'+String(id).padStart(3,'0');
-  DB.customers.push({id,code,name,phone,cccd,addr,note,sp});
+  DB.customers.push({id,code,name,phone,cccd,addr,note,sp,type});
   closeModal('modal-cust'); renderCustomers(); saveDB();
   showToast(`Đã thêm khách hàng <b>${name}</b> (${code}) thành công!`,'success');
   ['c-name','c-phone','c-cccd','c-addr','c-note'].forEach(x=>document.getElementById(x).value='');
@@ -1836,6 +1884,7 @@ function openEditCust(id){
   document.getElementById('ec-cccd').value=c.cccd;
   document.getElementById('ec-addr').value=c.addr||'';
   document.getElementById('ec-note').value=c.note||'';
+  document.getElementById('ec-type').value=c.type||'Dân';
   // sp dropdown: staff locked to own sp, admin free
   const sel=document.getElementById('ec-sp');
   if(currentUser.role==='Nhân viên'){
@@ -1858,6 +1907,7 @@ function saveEditCust(){
   const sp=document.getElementById('ec-sp').value;
   const addr=document.getElementById('ec-addr').value.trim();
   const note=document.getElementById('ec-note').value.trim();
+  const type=document.getElementById('ec-type')?.value||'Dân';
   if(!name||!phone||!cccd){showToast('Vui lòng điền Tên, SĐT và CCCD!','warn');return;}
   if(!/^[0-9]{9,12}$/.test(cccd)){showToast('Số CCCD phải là 9–12 chữ số!','warn');return;}
   // Normalize SĐT: bỏ khoảng trắng, dấu gạch ngang trước khi so sánh
@@ -1874,7 +1924,7 @@ function saveEditCust(){
     const nameListE=dupNameE.map(x=>`${x.name} (${x.code})`).join(', ');
     if(!confirm(`⚠️ Đã có khách hàng tên "${name}" trong hệ thống:\n${nameListE}\n\nBạn có chắc muốn lưu không?`))return;
   }
-  c.name=name; c.phone=phone; c.cccd=cccd; c.sp=sp; c.addr=addr; c.note=note;
+  c.name=name; c.phone=phone; c.cccd=cccd; c.sp=sp; c.addr=addr; c.note=note; c.type=type;
   closeModal('modal-edit-cust');
   renderCustomers(); saveDB();
   showToast('Đã cập nhật thông tin khách hàng thành công!','success');
@@ -1941,10 +1991,13 @@ function saveBatch(){
   if(!code||!eggs||!rate||!dateIn||!dateOut){showToast('Vui lòng điền đầy đủ!','warn');return;}
   if(rate<=0||rate>99){showToast('Tỉ lệ dồn phải từ 0.01 đến 99!','warn');return;}
   if(DB.batches.find(b=>b.code===code)){showToast('Mã lô đã tồn tại! Vui lòng chọn mã khác.','error');return;}
-  DB.batches.push({id:DB.nextId.batch++,code,eggs,rate,boxes,dateIn:fmtDate(dateIn),dateOut:fmtDate(dateOut)});
+  const khayStd = parseFloat(document.getElementById('b-khay-std').value)||0;
+  const khayDL  = parseFloat(document.getElementById('b-khay-dl').value)||0;
+  const khayDan = parseFloat(document.getElementById('b-khay-dan').value)||0;
+  DB.batches.push({id:DB.nextId.batch++,code,eggs,rate,boxes,dateIn:fmtDate(dateIn),dateOut:fmtDate(dateOut),khayStd,khayDL,khayDan});
   closeModal('modal-batch'); renderBatches(); refreshFilters(); saveDB();
   showToast(`Đã thêm lô tằm <b>${code}</b> (${boxes} hộp) thành công!`,'success');
-  ['b-code','b-eggs','b-boxes','b-in','b-out'].forEach(x=>document.getElementById(x).value='');
+  ['b-code','b-eggs','b-boxes','b-in','b-out','b-khay-std','b-khay-dl','b-khay-dan'].forEach(x=>document.getElementById(x).value='');
   document.getElementById('b-rate').value=500;
 }
 function fmtDate(s){if(!s)return '';const[y,m,d]=s.split('-');return `${d}/${m}/${y}`;}
@@ -1979,6 +2032,9 @@ function openEditBatch(code){
   } else {
     infoBox.style.display='none';
   }
+  document.getElementById('eb-khay-std').value = b.khayStd||'';
+  document.getElementById('eb-khay-dl').value  = b.khayDL||'';
+  document.getElementById('eb-khay-dan').value = b.khayDan||'';
   document.getElementById('modal-edit-batch').classList.add('open');
 }
 
@@ -2011,8 +2067,12 @@ function saveEditBatch(){
     showToast(`Mã lô "<b>${newCode}</b>" đã tồn tại! Vui lòng chọn mã khác.`,'error');return;
   }
   // update batch
+  const khayStd = parseFloat(document.getElementById('eb-khay-std').value)||0;
+  const khayDL  = parseFloat(document.getElementById('eb-khay-dl').value)||0;
+  const khayDan = parseFloat(document.getElementById('eb-khay-dan').value)||0;
   b.code=newCode; b.eggs=eggs; b.rate=rate; b.boxes=boxes;
   b.dateIn=fmtDate(dateIn); b.dateOut=fmtDate(dateOut);
+  b.khayStd=khayStd; b.khayDL=khayDL; b.khayDan=khayDan;
   // if code changed, update orders and transactions
   if(newCode!==origCode){
     DB.orders.forEach(o=>{ if(o.lotCode===origCode) o.lotCode=newCode; });
@@ -4080,6 +4140,7 @@ function renderDebts(){
         <td style="color:#888;">${pgD2.start+i+1}</td>
         <td style="font-size:11px;color:#555;">${r.sp}</td>
         <td style="font-weight:700;">${r.custName}<br><span style="font-size:10px;color:#888;font-weight:400;">${r.custCode} | ${r.custPhone}</span></td>
+        <td style="text-align:center;">${(()=>{const cObj=DB.customers.find(x=>x.id===r.custId);return cObj&&cObj.type==='Đại Lý'?'<span class="badge b-amber" style="font-size:11px;font-weight:700;">Đại Lý</span>':'<span class="badge b-gray" style="font-size:11px;">Dân</span>';})()}</td>
         <td style="text-align:center;"><span class="badge b-gray" style="font-size:11px;">${o.lotCode}</span><br><span style="font-size:10px;color:#888;">${lotDateOut}</span></td>
         <td style="text-align:center;">${o.boxes} hộp</td>
         <td style="font-size:12px;color:#555;">${tienTam}</td>
@@ -4097,7 +4158,7 @@ function renderDebts(){
     const totPaidL  = flatRows.reduce((s,fr)=>s+fr.item.paid,0);
     const totDebtL  = flatRows.reduce((s,fr)=>s+Math.max(0,fr.item.debt),0);
     const totalRowL = `<tr style="background:#f0f0f0;font-weight:700;border-top:2px solid #999;font-size:12px;">
-      <td colspan="4" style="text-align:right;padding:9px 10px;color:#333;">TỔNG CỘNG (${flatRows.length} đơn / ${list.length} khách)</td>
+      <td colspan="5" style="text-align:right;padding:9px 10px;color:#333;">TỔNG CỘNG (${flatRows.length} đơn / ${list.length} khách)</td>
       <td style="text-align:center;">${totBoxesL} hộp</td>
       <td style="color:#333;">${fmtMoney(totTamL)} đ</td>
       <td style="color:#185FA5;">${fmtMoney(totKenL)} đ</td>
@@ -4108,7 +4169,7 @@ function renderDebts(){
 
     document.getElementById('debt-tbl').innerHTML =
       `<thead><tr>
-        <th>#</th><th>Điểm bán</th><th>Họ và tên</th>
+        <th>#</th><th>Điểm bán</th><th>Họ và tên</th><th style="text-align:center;">Đối tượng</th>
         <th style="text-align:center;">Lô tằm</th>
         <th style="text-align:center;">Số hộp</th>
         <th>Tiền tằm</th><th>Tiền kén</th><th>Đã TT</th>
@@ -4139,6 +4200,7 @@ function renderDebts(){
       <td>${pgD.start+i+1}</td>
       <td style="color:#555;font-size:12px;">${r.sp}</td>
       <td style="font-weight:700;">${r.custName}<br><span style="font-size:11px;color:#888;font-weight:400;">${r.custCode}</span></td>
+      <td style="text-align:center;">${(()=>{const cObj=DB.customers.find(x=>x.id===r.custId);return cObj&&cObj.type==='Đại Lý'?'<span class="badge b-amber" style="font-size:11px;font-weight:700;">Đại Lý</span>':'<span class="badge b-gray" style="font-size:11px;">Dân</span>';})()}</td>
       <td>${r.custPhone}</td>
       <td style="text-align:center;">${lotBadge}</td>
       <td style="text-align:center;font-weight:700;">${totalBoxes} hộp</td>
@@ -4160,7 +4222,7 @@ function renderDebts(){
 
   const totalRow = `<tr style="background:${totalRowBg};font-weight:700;border-top:2px solid #999;">
     <td colspan="3" style="text-align:right;padding:9px 10px;color:#333;">TỔNG CỘNG (${list.length} khách)</td>
-    <td></td>
+    <td></td><td></td>
     <td style="text-align:center;">${totalLots} lô</td>
     <td style="text-align:center;color:#333;">${totalBoxes} hộp</td>
     <td style="color:${totalDebtColor};">${totalDebtLabel}<br><span style="font-size:11px;font-weight:400;color:#666;">Đã TT: ${fmtMoney(totalPaidAll)} đ</span></td>
@@ -4169,7 +4231,7 @@ function renderDebts(){
 
   document.getElementById('debt-tbl').innerHTML =
     `<thead><tr>
-      <th>#</th><th>Điểm bán</th><th>Họ và tên</th><th>Số điện thoại</th>
+      <th>#</th><th>Điểm bán</th><th>Họ và tên</th><th style="text-align:center;">Đối tượng</th><th>Số điện thoại</th>
       <th style="text-align:center;">Số lô</th>
       <th style="text-align:center;">Số hộp</th>
       <th>Tiền nợ / Đã TT</th><th>Ghi chú</th>
@@ -4338,7 +4400,7 @@ function exportCustomersExcel(){
   if(!list.length){showToast('Không có dữ liệu để xuất!','warn');return;}
 
   const BOM='\uFEFF';
-  const header='"STT","Mã KH","Họ và tên","Số điện thoại","Số CCCD","Địa chỉ","Điểm bán","Ghi chú"';
+  const header='"STT","Mã KH","Họ và tên","Số điện thoại","Số CCCD","Địa chỉ","Điểm bán","Đối tượng","Ghi chú"';
   const rows=list.map((c,i)=>{
     // Giữ số điện thoại & CCCD dạng text để không mất số 0 đầu
     const phone=/^0\d+$/.test(c.phone.trim()) ? `="` + c.phone.trim() + `"` : `"${c.phone}"`;
@@ -4351,10 +4413,11 @@ function exportCustomersExcel(){
       cccd,
       `"${(c.addr||'').replace(/"/g,'""')}"`,
       `"${(c.sp||'').replace(/"/g,'""')}"`,
+      `"${(c.type||'Dân').replace(/"/g,'""')}"`,
       `"${(c.note||'').replace(/"/g,'""')}"`
     ].join(',');
   });
-  const totalRow=`"","","TỔNG CỘNG: ${list.length} khách hàng","","","","",""`;
+  const totalRow=`"","","TỔNG CỘNG: ${list.length} khách hàng","","","","","",""`;
   const csv=BOM+[header,...rows,totalRow].join('\n');
   const a=document.createElement('a');
   a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
@@ -4404,16 +4467,13 @@ function exportDebtsExcel(){
 // IN DANH SÁCH PHÁT TẰM GIỐNG
 // ============================================================
 function openPrintPhatTamModal(){
-  // Lấy bộ lọc hiện tại để pre-fill
   const lf = document.getElementById('ord-lot-filter').value;
   const sf = document.getElementById('ord-sp-filter').value ||
              (currentUser.role === 'Nhân viên' ? currentUser.sp : '');
 
-  // Build dropdown lô (chỉ lô đang có trong filter)
   const lots = [...new Set(DB.orders.filter(o=>o.status!=='Khách hủy').map(o=>o.lotCode))].sort();
   const lotOpts = lots.map(c=>`<option value="${c}" ${c===lf?'selected':''}>${c}</option>`).join('');
 
-  // Build dropdown điểm bán
   const sps = DB.salespoints.map(s=>s.name);
   const spOpts = '<option value="">Tất cả điểm bán</option>' +
     sps.map(s=>`<option value="${s}" ${s===sf?'selected':''}>${s}</option>`).join('');
@@ -4422,14 +4482,14 @@ function openPrintPhatTamModal(){
   overlay.id = 'phat-tam-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
-    <div style="background:#fff;border-radius:14px;padding:28px 32px;min-width:360px;max-width:460px;box-shadow:0 8px 32px rgba(0,0,0,.2);">
+    <div style="background:#fff;border-radius:14px;padding:28px 32px;min-width:360px;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.2);">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;border-bottom:2px solid #e0e0e0;padding-bottom:14px;">
         <div style="width:36px;height:36px;border-radius:8px;background:#e8f7f2;display:flex;align-items:center;justify-content:center;">
           <i class="ti ti-printer" style="font-size:20px;color:#0a5c46;"></i>
         </div>
         <div>
           <div style="font-weight:700;font-size:16px;color:#0a5c46;">In danh sách phát tằm giống</div>
-          <div style="font-size:12px;color:#888;">Điền thông tin để in theo mẫu</div>
+          <div style="font-size:12px;color:#888;">Số lượng khay tự động theo đối tượng khách</div>
         </div>
         <span onclick="document.getElementById('phat-tam-overlay').remove()"
           style="margin-left:auto;cursor:pointer;font-size:20px;color:#aaa;line-height:1;">&times;</span>
@@ -4446,13 +4506,13 @@ function openPrintPhatTamModal(){
           <label style="font-size:13px;font-weight:600;color:#333;display:block;margin-bottom:5px;">Điểm bán</label>
           <select id="pt-sp" style="width:100%;padding:9px 10px;border:2px solid #ddd;border-radius:8px;font-size:14px;">${spOpts}</select>
         </div>
-        <div>
-          <label style="font-size:13px;font-weight:600;color:#333;display:block;margin-bottom:5px;">
-            Số khay / hộp
-            <span style="font-weight:400;color:#888;font-size:12px;">(nhân với số hộp mỗi khách để ra số khay)</span>
-          </label>
-          <input id="pt-khay" type="number" min="1" step="1" placeholder="Ví dụ: 10 khay/hộp"
-            style="width:100%;padding:9px 10px;border:2px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;"/>
+        <!-- Thông tin khay từ lô tằm -->
+        <div id="pt-khay-info" style="display:none;background:#e8f7f2;border:1.5px solid #b2dfdb;border-radius:10px;padding:12px 14px;font-size:12px;color:#0a5c46;">
+          <div style="font-weight:700;margin-bottom:6px;"><i class="ti ti-stack-2"></i> Cấu hình khay của lô:</div>
+          <div id="pt-khay-detail"></div>
+        </div>
+        <div id="pt-khay-warn" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:10px 14px;font-size:12px;color:#7a4500;">
+          <i class="ti ti-alert-triangle"></i> Lô này chưa cấu hình số khay. Số lượng khay sẽ để trống trong bảng in.
         </div>
       </div>
 
@@ -4466,50 +4526,100 @@ function openPrintPhatTamModal(){
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  // Close khi click ra ngoài
   overlay.addEventListener('click', e => { if(e.target === overlay) overlay.remove(); });
-  setTimeout(()=>document.getElementById('pt-lot')?.focus(), 100);
+
+  // Khi chọn lô → hiển thị thông tin khay
+  setTimeout(()=>{
+    const lotSel = document.getElementById('pt-lot');
+    if(!lotSel) return;
+    const showKhayInfo = () => {
+      const lc = lotSel.value;
+      const batch = DB.batches.find(b=>b.code===lc);
+      const infoEl = document.getElementById('pt-khay-info');
+      const warnEl = document.getElementById('pt-khay-warn');
+      const detEl  = document.getElementById('pt-khay-detail');
+      if(!lc){ infoEl.style.display='none'; warnEl.style.display='none'; return; }
+      if(batch && (batch.khayStd||batch.khayDL||batch.khayDan)){
+        const rows = [];
+        if(batch.khayStd) rows.push(`• Chuẩn: <b>${batch.khayStd} khay/hộp</b>`);
+        if(batch.khayDL)  rows.push(`• Đại Lý: <b>${batch.khayDL} khay/hộp</b>`);
+        if(batch.khayDan) rows.push(`• Dân: <b>${batch.khayDan} khay/hộp</b>`);
+        detEl.innerHTML = rows.join('<br>');
+        infoEl.style.display='block';
+        warnEl.style.display='none';
+      } else {
+        infoEl.style.display='none';
+        warnEl.style.display='block';
+      }
+    };
+    lotSel.addEventListener('change', showKhayInfo);
+    // Nếu lô đã được pre-select thì hiện ngay
+    if(lotSel.value) showKhayInfo();
+    lotSel.focus();
+  }, 100);
 }
 
 function doPrintPhatTam(){
-  const lotCode = document.getElementById('pt-lot')?.value;
+  const lotCode  = document.getElementById('pt-lot')?.value;
   const spFilter = document.getElementById('pt-sp')?.value;
-  const khayPerHop = parseFloat(document.getElementById('pt-khay')?.value) || 0;
 
   if(!lotCode){ alert('Vui lòng chọn lô tằm!'); return; }
 
-  // Lấy đơn hàng theo lô và điểm bán, bỏ đơn hủy
   let orders = DB.orders.filter(o => o.lotCode === lotCode && o.status !== 'Khách hủy');
   if(spFilter) orders = orders.filter(o => o.sp === spFilter);
   if(!orders.length){ alert('Không có đơn hàng phù hợp!'); return; }
 
-  // Sắp xếp theo tên khách
   orders.sort((a,b) => getCustFast(a.custId).name.localeCompare(getCustFast(b.custId).name, 'vi'));
 
-  // Lấy thông tin lô
-  const batch = DB.batches.find(b => b.code === lotCode) || {};
+  const batch   = DB.batches.find(b => b.code === lotCode) || {};
   const dateOut = batch.dateOut || '';
   const spLabel = spFilter || 'Tất cả điểm bán';
 
-  // Tổng
-  const totalBoxes = orders.reduce((s,o)=>s+o.boxes,0);
-  const totalKhay  = khayPerHop > 0 ? orders.reduce((s,o)=>s+(o.boxes*khayPerHop),0) : null;
+  // Helper: tính số khay theo đối tượng khách
+  function getKhay(custId, boxes){
+    const custType = (DB.customers.find(x=>x.id===custId)||{}).type||'Dân';
+    let kr = 0;
+    if(custType==='Đại Lý' && batch.khayDL)       kr = batch.khayDL;
+    else if(custType==='Dân' && batch.khayDan)      kr = batch.khayDan;
+    else if(batch.khayStd)                           kr = batch.khayStd;
+    return kr ? Math.round(boxes * kr * 4) / 4 : '';
+  }
+
+  const totalBoxes = orders.reduce((s,o)=>s+o.boxes, 0);
+  const totalKhay  = orders.reduce((s,o)=>{
+    const k = getKhay(o.custId, o.boxes);
+    return s + (k !== '' ? k : 0);
+  }, 0);
+  const totalTien  = orders.reduce((s,o)=>s+(o.boxes*(o.price||0)), 0);
 
   const rows = orders.map((o,i)=>{
-    const c = getCustFast(o.custId);
-    const khay = khayPerHop > 0 ? (o.boxes * khayPerHop) : '';
+    const c    = getCustFast(o.custId);
+    const khay = getKhay(o.custId, o.boxes);
+    const custType = (DB.customers.find(x=>x.id===o.custId)||{}).type||'Dân';
     return `<tr>
       <td style="text-align:center;">${i+1}</td>
       <td style="font-weight:600;">${c.name}</td>
+      <td style="font-size:11px;color:#555;">${custType==='Đại Lý'?'<b style="color:#b8620a;">ĐL</b>':'Dân'}</td>
       <td>${(c.addr||'').replace(/</g,'&lt;')}</td>
       <td>${c.phone}</td>
       <td style="text-align:center;font-weight:700;">${o.boxes}</td>
+      <td style="text-align:center;">${o.price ? fmtMoney(o.price) : ''}</td>
+      <td style="text-align:center;font-weight:700;">${o.price ? fmtMoney(o.boxes * o.price) : ''}</td>
       <td style="text-align:center;font-weight:700;">${khay}</td>
       <td></td>
       <td></td>
       <td>${o.note||''}</td>
     </tr>`;
   }).join('');
+
+  // Ghi chú cấu hình khay ở đầu trang
+  const khayNote = (()=>{
+    const parts = [];
+    if(batch.khayStd) parts.push(`Chuẩn: ${batch.khayStd} khay/hộp`);
+    if(batch.khayDL)  parts.push(`Đại Lý: ${batch.khayDL} khay/hộp`);
+    if(batch.khayDan) parts.push(`Dân: ${batch.khayDan} khay/hộp`);
+    return parts.length ? `(${parts.join(' | ')})` : '';
+  })();
 
   const win = window.open('','_blank');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
@@ -4522,15 +4632,15 @@ function doPrintPhatTam(){
     h2{text-align:center;font-size:17px;text-transform:uppercase;letter-spacing:1px;margin:10px 0 4px;}
     .subtitle{text-align:center;font-size:13px;margin-bottom:10px;font-weight:600;}
     .meta{display:flex;justify-content:space-between;font-size:13px;margin-bottom:10px;font-weight:600;}
-    table{width:100%;border-collapse:collapse;font-size:12.5px;}
-    th,td{border:1px solid #555;padding:7px 8px;vertical-align:middle;}
-    th{background:#f0f0f0;font-weight:700;text-align:center;text-transform:uppercase;font-size:12px;}
-    td{min-height:32px;}
+    table{width:100%;border-collapse:collapse;font-size:12px;}
+    th,td{border:1px solid #555;padding:6px 7px;vertical-align:middle;}
+    th{background:#f0f0f0;font-weight:700;text-align:center;text-transform:uppercase;font-size:11px;}
+    td{min-height:30px;}
     .total-row td{font-weight:700;background:#f5f5f5;}
     .sign{display:flex;justify-content:space-between;margin-top:28px;font-size:13px;font-weight:700;}
     .sign div{text-align:center;min-width:180px;}
     .sign .sign-name{margin-top:60px;font-style:italic;font-weight:400;}
-    @media print{body{margin:10px 16px;} @page{size:A4 landscape;margin:12mm;}}
+    @media print{body{margin:10px 16px;} @page{size:A4 landscape;margin:10mm;}}
   </style>
   </head><body>
     <div class="company">CÔNG TY CỔ PHẦN KÉN TẰM HỒNG HÀ</div>
@@ -4544,24 +4654,29 @@ function doPrintPhatTam(){
     <table>
       <thead>
         <tr>
-          <th style="width:40px;">STT</th>
+          <th style="width:36px;">STT</th>
           <th>TÊN KHÁCH HÀNG</th>
+          <th style="width:50px;">ĐỐI TƯỢNG</th>
           <th>ĐỊA CHỈ</th>
-          <th style="width:110px;">SỐ ĐIỆN THOẠI</th>
-          <th style="width:80px;">SỐ LƯỢNG HỘP</th>
-          <th style="width:90px;">SỐ LƯỢNG KHAY</th>
-          <th style="width:100px;">THỜI GIAN XUẤT</th>
-          <th style="width:110px;">KHÁCH HÀNG KÝ TÊN</th>
-          <th style="width:110px;">GHI CHÚ</th>
+          <th style="width:105px;">SỐ ĐIỆN THOẠI</th>
+          <th style="width:70px;">SỐ LƯỢNG HỘP</th>
+          <th style="width:85px;">ĐƠN GIÁ/HỘP (đ)</th>
+          <th style="width:90px;">THÀNH TIỀN (đ)</th>
+          <th style="width:85px;">SỐ LƯỢNG KHAY</th>
+          <th style="width:95px;">THỜI GIAN XUẤT</th>
+          <th style="width:105px;">KHÁCH HÀNG KÝ TÊN</th>
+          <th style="width:100px;">GHI CHÚ</th>
         </tr>
       </thead>
       <tbody>
         ${rows}
         <tr class="total-row">
-          <td colspan="3" style="text-align:center;">TỔNG:</td>
+          <td colspan="4" style="text-align:center;">TỔNG:</td>
           <td></td>
           <td style="text-align:center;">${totalBoxes}</td>
-          <td style="text-align:center;">${totalKhay !== null ? totalKhay : ''}</td>
+          <td></td>
+          <td style="text-align:center;">${totalTien ? fmtMoney(totalTien) : ''}</td>
+          <td style="text-align:center;">${totalKhay || ''}</td>
           <td></td><td></td><td></td>
         </tr>
       </tbody>
@@ -4570,11 +4685,12 @@ function doPrintPhatTam(){
       <div>NGƯỜI LẬP<div class="sign-name">&nbsp;</div></div>
       <div>QUẢN LÝ<div class="sign-name">&nbsp;</div></div>
     </div>
-  <script>window.onload=()=>{window.print();}<\/script>
+  <\/script>
   </body></html>`);
   win.document.close();
   document.getElementById('phat-tam-overlay')?.remove();
 }
+
 </script>
 </body>
 </html>
