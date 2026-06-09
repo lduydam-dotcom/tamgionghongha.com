@@ -1526,7 +1526,7 @@ function initFilters(){
   ['ord-sp-filter'].forEach(id=>{
     const el=document.getElementById(id);
     if(el){
-      if(currentUser.role==='Admin'){
+      if(currentUser.role==='Admin'||currentUser.role==='Quản Lý'){
         el.style.display='';
         el.innerHTML='<option value="">Tất cả điểm bán</option>'+DB.salespoints.map(s=>`<option>${s.name}</option>`).join('');
       } else {
