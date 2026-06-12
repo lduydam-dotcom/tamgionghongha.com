@@ -292,11 +292,12 @@ tr:hover td{background:#fafafa;}
           <div class="card">
             <div class="card-pad" style="border-bottom:2px solid #ddd;display:flex;align-items:center;justify-content:space-between;">
               <div class="dash-section" style="margin:0;">Danh sách đặt tằm</div>
-              <select id="dash-lot-filter" style="font-size:12px;padding:5px 8px;border:2px solid #999;border-radius:6px;" onchange="renderDashOrders()">
+              <select id="dash-lot-filter" style="font-size:12px;padding:5px 8px;border:2px solid #999;border-radius:6px;" onchange="pgReset('dashOrd');renderDashOrders()">
                 <option value="">Tất cả lô</option>
               </select>
             </div>
             <div class="tbl-wrap"><table id="dash-orders-tbl"></table></div>
+            <div id="dash-ord-pgbar" class="pg-nav" style="display:none;"></div>
           </div>
         </div>
 
@@ -1647,21 +1648,24 @@ function renderDashOrders(){
   const lotF=document.getElementById('dash-lot-filter').value;
   let list=DB.orders;
   if(lotF)list=list.filter(o=>o.lotCode===lotF);
-  // filter by salespoint if not admin
   if(currentUser.role==='Nhân viên') list=list.filter(o=>o.sp===currentUser.sp);
+  list=[...list].sort((a,b)=>b.ts.localeCompare(a.ts));
   const activeOrders=list.filter(o=>o.status!=='Khách hủy');
-  const rows=list.map((o,i)=>{
-    const c=getCust(o.custId);
-    return `<tr><td>${i+1}</td><td>${o.ts}</td><td style="font-weight:700;">${c.name||''}</td><td>${c.phone||''}</td><td><span class="badge b-gray">${o.lotCode}</span></td><td style="font-weight:700;">${o.status==='Khách hủy'?'<s style=\"color:#aaa;\">' +o.boxes+'</s>':o.boxes}</td><td>${o.sp}</td><td>${badgeOrd(o.status)}</td></tr>`;
-  }).join('');
-  // Dòng tổng: chỉ tính đơn chưa hủy
   const sumOrdBoxes=Math.round(activeOrders.reduce((s,o)=>s+o.boxes,0)*100)/100;
-  const totalRowOrders=list.length>0?`<tr style="background:#f0f7f4;font-weight:700;border-top:2px solid #7dccb0;">
+  pgInit('dashOrd',15);
+  const pg=pgSlice('dashOrd',list);
+  _pgState['dashOrd']._pages=pg.pages;
+  const rows=pg.slice.map((o,i)=>{
+    const c=getCust(o.custId);
+    return `<tr><td>${pg.start+i+1}</td><td>${o.ts}</td><td style="font-weight:700;">${c.name||''}</td><td>${c.phone||''}</td><td><span class="badge b-gray">${o.lotCode}</span></td><td style="font-weight:700;">${o.status==='Khách hủy'?'<s style="color:#aaa;">'+o.boxes+'</s>':o.boxes}</td><td>${o.sp}</td><td>${badgeOrd(o.status)}</td></tr>`;
+  }).join('');
+  const totalRowOrders=`<tr style="background:#f0f7f4;font-weight:700;border-top:2px solid #7dccb0;">
     <td colspan="5" style="text-align:right;color:#444;padding:8px 12px;">TỔNG CỘNG (${activeOrders.length} đơn)</td>
     <td style="color:#185FA5;font-size:14px;">${sumOrdBoxes}</td>
     <td colspan="2">—</td>
-  </tr>`:'';
+  </tr>`;
   document.getElementById('dash-orders-tbl').innerHTML=`<thead><tr><th>#</th><th>Ngày giờ đặt</th><th>Khách hàng</th><th>Điện thoại</th><th>Lô</th><th>Hộp đặt</th><th>Điểm bán</th><th>Trạng thái</th></tr></thead><tbody>${rows||'<tr><td colspan="8" style="text-align:center;color:#999;padding:20px;">Không có đơn nào</td></tr>'}${totalRowOrders}</tbody>`;
+  pgRender('dash-ord-pgbar','dashOrd',pg);
 }
 
 // ============================================================
@@ -1813,12 +1817,13 @@ function pgGo(id, barId, page){
 
 // Registry hàm refresh cho từng bảng
 const PGREFRESH = {
-  cust:  ()=>renderCustomers(),
-  batch: ()=>renderBatches(),
-  ord:   ()=>renderOrders(),
-  tx:    ()=>renderTx(),
-  rep:   ()=>renderReports(),
-  debt:  ()=>renderDebts(),
+  cust:    ()=>renderCustomers(),
+  batch:   ()=>renderBatches(),
+  ord:     ()=>renderOrders(),
+  tx:      ()=>renderTx(),
+  rep:     ()=>renderReports(),
+  debt:    ()=>renderDebts(),
+  dashOrd: ()=>renderDashOrders(),
 };
 
 function renderCustomers(){
