@@ -343,6 +343,7 @@ tr:hover td{background:#fafafa;}
               <option value="Còn hàng">Còn hàng</option>
               <option value="Sắp hết">Sắp hết</option>
               <option value="Gần hết">Gần hết</option>
+              <option value="Hủy lô">🚫 Hủy lô</option>
             </select>
           </div>
           <div class="card"><div class="tbl-wrap"><table id="batch-tbl"></table></div>
@@ -843,6 +844,17 @@ tr:hover td{background:#fafafa;}
     <div class="fg full" style="background:#e8f7f2;border-radius:6px;padding:8px 12px;font-size:12px;color:#0a5c46;">
       <i class="ti ti-calendar"></i> Ngày dự kiến thu kén: <b id="eb-harvest-preview">—</b>
     </div>
+    <!-- Trạng thái lô -->
+    <div class="fg full" style="border-top:1px solid #eee;padding-top:12px;margin-top:2px;">
+      <label style="font-weight:700;color:#333;font-size:13px;display:block;margin-bottom:6px;"><i class="ti ti-toggle-right"></i> Trạng thái lô tằm</label>
+      <select id="eb-lot-status" style="width:100%;padding:9px 10px;border:2px solid #ddd;border-radius:8px;font-size:14px;" onchange="onEditBatchStatusChange()">
+        <option value="">-- Bình thường (tự tính) --</option>
+        <option value="Hủy lô">🚫 Hủy lô tằm</option>
+      </select>
+      <div id="eb-lot-status-warn" style="display:none;margin-top:8px;background:#fde8e8;border:1.5px solid #f5a0a0;border-radius:8px;padding:10px 14px;font-size:12px;color:#c0392b;">
+        <i class="ti ti-alert-triangle"></i> <b>Lưu ý:</b> Khi hủy lô tằm, lô này sẽ <b>không được tính vào công nợ</b> khách hàng. Các đơn hàng thuộc lô này vẫn được giữ nguyên nhưng sẽ bị loại khỏi báo cáo công nợ.
+      </div>
+    </div>
   </div>
   <div class="modal-ftr">
     <button class="btn" onclick="closeModal('modal-edit-batch')">Huỷ</button>
@@ -1335,13 +1347,15 @@ function lotNotYetExported(b){
   const today=new Date(); today.setHours(0,0,0,0);
   return harvestEnd>=today;
 }
-function getActiveBatches(){return DB.batches.filter(lotNotYetExported);}
+function getActiveBatches(){return DB.batches.filter(b=>b.lotStatus!=='Hủy lô'&&lotNotYetExported(b));}
 
 function lotStatus(code){
+  const b=DB.batches.find(x=>x.code===code);
+  if(b&&b.lotStatus==='Hủy lô') return 'Hủy lô';
   const tot=getLotBoxes(code); const bkd=getLotBooked(code); const pct=tot?bkd/tot:0;
   if(pct>=0.95)return 'Gần hết'; if(pct>=0.6)return 'Sắp hết'; return 'Còn hàng';
 }
-function badgeLot(code){const s=lotStatus(code);const m={'Gần hết':'b-red','Sắp hết':'b-amber','Còn hàng':'b-green'};return `<span class="badge ${m[s]}">${s}</span>`;}
+function badgeLot(code){const s=lotStatus(code);if(s==='Hủy lô')return '<span class="badge" style="background:#f0e0e0;color:#8b0000;border:1px solid #e0a0a0;font-size:11px;padding:2px 7px;border-radius:10px;">🚫 Hủy lô</span>';const m={'Gần hết':'b-red','Sắp hết':'b-amber','Còn hàng':'b-green'};return `<span class="badge ${m[s]||'b-gray'}">${s}</span>`;}
 function badgeOrd(s){const m={'Xác nhận':'b-green','Chờ xác nhận':'b-amber','Khách hủy':'b-red'};return `<span class="badge ${m[s]||'b-gray'}">${s}</span>`;}
 function getCust(id){return DB.customers.find(c=>c.id===id)||{name:'?',code:'?',phone:'',cccd:''};}
 function getSP(name){return DB.salespoints.find(s=>s.name===name)||{};}
@@ -1461,13 +1475,13 @@ function populateModal(id){
     const dw=document.getElementById('o-debt-warning'); if(dw) dw.style.display='none';
     // Lô tằm: Admin thấy tất cả lô còn hộp; Nhân viên chỉ thấy lô có dateOut >= hôm nay còn hộp
     const sl=document.getElementById('o-lot');
-    const allAvailLots=DB.batches.filter(b=>getLotAvail(b.code)>0);
-    let eligibleLots;
-    if(currentUser.role==='Admin'){
-      eligibleLots=allAvailLots; // Admin thấy tất cả
-    } else {
-      eligibleLots=getOrderableBatches().filter(b=>getLotAvail(b.code)>0); // Nhân viên: dateOut >= hôm nay
-    }
+    const today0=new Date(); today0.setHours(0,0,0,0);
+    // Lô hợp lệ: không bị hủy + ngày xuất >= hôm nay + còn hộp (áp dụng cho mọi role)
+    const eligibleLots=DB.batches.filter(b=>{
+      if(b.lotStatus==='Hủy lô') return false;
+      const d=parseDMY(b.dateOut); if(!d||d<today0) return false;
+      return getLotAvail(b.code)>0;
+    });
     sl.innerHTML='<option value="">-- Chọn lô --</option>'+eligibleLots.map(b=>{
       const avail=getLotAvail(b.code);
       return `<option value="${b.code}">${b.code} (còn ${avail} hộp – xuất ${b.dateOut})</option>`;
@@ -1564,6 +1578,7 @@ function renderDashboard(){
   // Lô chưa xuất (dateOut >= hôm nay) — dùng cho stat boxes và đặt tằm
   const today=new Date(); today.setHours(0,0,0,0);
   const notExportedBatches=DB.batches.filter(b=>{
+    if(b.lotStatus==='Hủy lô') return false;
     const out=parseDMY(b.dateOut); return out&&out>=today;
   });
   // Lô chưa qua thu kén (dateOut + 20 ngày >= hôm nay) — dùng cho bảng tình trạng
@@ -1585,6 +1600,8 @@ function renderDashboard(){
 }
 function renderDashLots(){
   const activeBatches=getActiveBatches();
+  // Lô bị hủy — hiển thị riêng ở cuối bảng, gạch ngang
+  const cancelledBatches=DB.batches.filter(b=>b.lotStatus==='Hủy lô'&&lotNotYetExported(b));
   const rows=activeBatches.map((b,i)=>{
     const bkd=getLotBooked(b.code); const avail=Math.round((b.boxes-bkd)*100)/100; const pct=b.boxes?Math.round(bkd/b.boxes*100):0;
     const color=pct>=95?'#e24b4a':pct>=60?'#EF9F27':'#1D9E75';
@@ -1612,11 +1629,19 @@ function renderDashLots(){
     <td><div style="font-size:11px;font-weight:700;color:${sumColor};">${sumPct}%</div><div class="prog-bar"><div class="prog-fill" style="width:${sumPct}%;background:${sumPct>=95?'#e24b4a':sumPct>=60?'#EF9F27':'#1D9E75'};"></div></div></td>
     <td>—</td>
   </tr>`:'';
+  const cancelledRows=cancelledBatches.map(b=>`<tr style="opacity:.55;background:#fdf0f0;">
+    <td style="font-weight:700;text-decoration:line-through;color:#999;">${b.code}</td>
+    <td style="color:#bbb;">${b.dateIn}</td><td style="color:#bbb;">${b.dateOut}</td>
+    <td style="color:#bbb;font-size:11px;">${calcHarvestRange(b.dateOut)}</td>
+    <td style="color:#bbb;">${b.boxes}</td><td style="color:#bbb;">—</td>
+    <td style="color:#bbb;">—</td><td style="color:#bbb;">—</td>
+    <td>${badgeLot(b.code)}</td>
+  </tr>`).join('');
   document.getElementById('dash-lots-tbl').innerHTML=`<thead><tr>
     <th>Lô số</th><th>Ngày nhập trứng</th><th>Ngày xuất tằm</th>
     <th style="color:#185FA5;">Dự kiến thu kén</th>
     <th>Tổng hộp</th><th>Đã đặt</th><th>Còn tồn</th><th>Tỉ lệ đặt</th><th>Trạng thái</th>
-  </tr></thead><tbody>${rows||'<tr><td colspan="9" style="text-align:center;color:#999;padding:20px;">Không có lô tằm chưa xuất</td></tr>'}${totalRowLots}</tbody>`;
+  </tr></thead><tbody>${rows||'<tr><td colspan="9" style="text-align:center;color:#999;padding:20px;">Không có lô tằm chưa xuất</td></tr>'}${totalRowLots}${cancelledRows}</tbody>`;
 }
 function renderDashOrders(){
   const lotF=document.getElementById('dash-lot-filter').value;
@@ -2035,9 +2060,16 @@ function openEditBatch(code){
   document.getElementById('eb-khay-std').value = b.khayStd||'';
   document.getElementById('eb-khay-dl').value  = b.khayDL||'';
   document.getElementById('eb-khay-dan').value = b.khayDan||'';
+  document.getElementById('eb-lot-status').value = b.lotStatus||'';
+  onEditBatchStatusChange();
   document.getElementById('modal-edit-batch').classList.add('open');
 }
 
+function onEditBatchStatusChange(){
+  const val = document.getElementById('eb-lot-status').value;
+  const warn = document.getElementById('eb-lot-status-warn');
+  if(warn) warn.style.display = val==='Hủy lô' ? 'block' : 'none';
+}
 function calcEditBoxes(){
   const eggs=parseFloat(document.getElementById('eb-eggs').value)||0;
   const rate=parseFloat(document.getElementById('eb-rate').value)||0;
@@ -2070,9 +2102,11 @@ function saveEditBatch(){
   const khayStd = parseFloat(document.getElementById('eb-khay-std').value)||0;
   const khayDL  = parseFloat(document.getElementById('eb-khay-dl').value)||0;
   const khayDan = parseFloat(document.getElementById('eb-khay-dan').value)||0;
+  const lotStatus = document.getElementById('eb-lot-status').value;
   b.code=newCode; b.eggs=eggs; b.rate=rate; b.boxes=boxes;
   b.dateIn=fmtDate(dateIn); b.dateOut=fmtDate(dateOut);
   b.khayStd=khayStd; b.khayDL=khayDL; b.khayDan=khayDan;
+  b.lotStatus=lotStatus;
   // if code changed, update orders and transactions
   if(newCode!==origCode){
     DB.orders.forEach(o=>{ if(o.lotCode===origCode) o.lotCode=newCode; });
@@ -2424,6 +2458,7 @@ function openTxModal(){
   const lotCodes=[...new Set(txEligible.map(o=>o.lotCode))].filter(code=>{
     const b=DB.batches.find(x=>x.code===code);
     if(!b)return false;
+    if(b.lotStatus==='Hủy lô') return false; // loại lô bị hủy
     const out=parseDMY(b.dateOut);
     if(!out)return false;
     const harvestEnd=new Date(out);
@@ -3474,7 +3509,12 @@ function getFilteredOrders(){
   const fromDate=fromVal?new Date(fromVal+'T00:00:00'):null;
   const toDate=toVal?new Date(toVal+'T23:59:59'):null;
 
-  let ordAll=DB.orders.filter(o=>o.status==='Xác nhận');
+  let ordAll=DB.orders.filter(o=>{
+    if(o.status!=='Xác nhận') return false;
+    const batch=DB.batches.find(b=>b.code===o.lotCode);
+    if(batch&&batch.lotStatus==='Hủy lô') return false; // loại đơn thuộc lô đã hủy
+    return true;
+  });
   if(currentUser.role==='Nhân viên') ordAll=ordAll.filter(o=>o.sp===currentUser.sp);
   else if(sf) ordAll=ordAll.filter(o=>o.sp===sf);
   if(lf) ordAll=ordAll.filter(o=>o.lotCode===lf);
@@ -3969,7 +4009,10 @@ function buildDebtList(){
   // Chỉ tính nợ các lô tằm đã xuất (dateOut < hôm nay)
   const today = new Date(); today.setHours(0,0,0,0);
   const exportedLotCodes = new Set(
-    DB.batches.filter(b => { const d = parseDMY(b.dateOut); return d && d <= today; }).map(b => b.code)
+    DB.batches.filter(b => {
+      if(b.lotStatus === 'Hủy lô') return false; // loại lô đã hủy
+      const d = parseDMY(b.dateOut); return d && d <= today;
+    }).map(b => b.code)
   );
 
   // Lấy orders không bị hủy, thuộc lô đã xuất
