@@ -365,6 +365,9 @@ tr:hover td{background:#fafafa;}
             <button class="btn" onclick="openPrintPhatTamModal()" style="padding:9px 13px;border-color:#0a5c46;color:#0a5c46;white-space:nowrap;flex-shrink:0;">
               <i class="ti ti-printer"></i> In phát tằm
             </button>
+            <button class="btn" onclick="exportOrdersExcel()" style="padding:9px 13px;border-color:#1d6f42;color:#1d6f42;white-space:nowrap;flex-shrink:0;">
+              <i class="ti ti-file-spreadsheet"></i> Excel
+            </button>
           </div>
           <div class="card"><div class="tbl-wrap"><table id="ord-tbl"></table></div>
           <div id="ord-pgbar" class="pg-nav" style="display:none;"></div>
@@ -4482,6 +4485,90 @@ function exportCustomersExcel(){
 }
 
 // ---- Xuất Excel danh sách nợ ----
+function exportOrdersExcel(){
+  // Lấy bộ lọc hiện tại từ toolbar
+  const lf = document.getElementById('ord-lot-filter').value;
+  const sf = document.getElementById('ord-sp-filter').value;
+
+  // Nếu chưa chọn lô, hỏi người dùng chọn lô
+  if(!lf){ showToast('Vui lòng chọn một Lô tằm cụ thể để xuất Excel phát tằm!','warn'); return; }
+
+  let orders = DB.orders.filter(o => o.lotCode === lf && o.status !== 'Khách hủy');
+  if(sf) orders = orders.filter(o => o.sp === sf);
+  if(currentUser.role === 'Nhân viên') orders = orders.filter(o => o.sp === currentUser.sp);
+  if(!orders.length){ showToast('Không có đơn hàng phù hợp!','warn'); return; }
+
+  orders.sort((a,b) => getCustFast(a.custId).name.localeCompare(getCustFast(b.custId).name, 'vi'));
+
+  const batch  = DB.batches.find(b => b.code === lf) || {};
+  const spLabel = sf || 'Tất cả điểm bán';
+
+  function getKhay(custId, boxes){
+    const custType = (DB.customers.find(x=>x.id===custId)||{}).type||'Dân';
+    let kr = 0;
+    if(custType==='Đại Lý' && batch.khayDL)       kr = batch.khayDL;
+    else if(custType==='Dân' && batch.khayDan)      kr = batch.khayDan;
+    else if(batch.khayStd)                           kr = batch.khayStd;
+    return kr ? Math.round(boxes * kr * 4) / 4 : '';
+  }
+
+  const totalBoxes = orders.reduce((s,o)=>s+o.boxes, 0);
+  const totalKhay  = orders.reduce((s,o)=>{ const k=getKhay(o.custId,o.boxes); return s+(k!==''?k:0); }, 0);
+  const totalTien  = orders.reduce((s,o)=>s+(o.boxes*(o.price||0)), 0);
+
+  const BOM = '\uFEFF';
+  // Header giống mẫu in phát tằm
+  const header = [
+    '"STT"','"TÊN KHÁCH HÀNG"','"ĐỐI TƯỢNG"','"ĐỊA CHỈ"',
+    '"SỐ ĐIỆN THOẠI"','"SỐ LƯỢNG HỘP"','"ĐƠN GIÁ/HỘP (đ)"',
+    '"THÀNH TIỀN (đ)"','"SỐ LƯỢNG KHAY"','"THỜI GIAN XUẤT"',
+    '"KHÁCH HÀNG KÝ TÊN"','"GHI CHÚ"'
+  ].join(',');
+
+  const rows = orders.map((o,i) => {
+    const c = getCustFast(o.custId);
+    const custType = (DB.customers.find(x=>x.id===o.custId)||{}).type||'Dân';
+    const khay = getKhay(o.custId, o.boxes);
+    const phone = /^0\d+$/.test((c.phone||'').trim()) ? '="'+c.phone.trim()+'"' : '"'+(c.phone||'')+'"';
+    return [
+      '"'+(i+1)+'"',
+      '"'+c.name.replace(/"/g,'""')+'"',
+      '"'+custType+'"',
+      '"'+(c.addr||'').replace(/"/g,'""')+'"',
+      phone,
+      '"'+o.boxes+'"',
+      '"'+(o.price||'')+'"',
+      '"'+(o.price ? o.boxes*(o.price||0) : '')+'"',
+      '"'+khay+'"',
+      '""',
+      '""',
+      '"'+(o.note||'').replace(/"/g,'""')+'"',
+    ].join(',');
+  });
+
+  const totalRow = [
+    '"TỔNG:"','""','""','""','""',
+    '"'+totalBoxes+'"','""',
+    '"'+totalTien+'"',
+    '"'+totalKhay+'"',
+    '""','""','""'
+  ].join(',');
+
+  // Thêm thông tin tiêu đề
+  const title1 = '"CÔNG TY CỔ PHẦN KÉN TẰM HỒNG HÀ"';
+  const title2 = '"DANH SÁCH PHÁT TẰM GIỐNG"';
+  const title3 = '"Địa điểm: '+spLabel+' | Lô tằm: '+lf+' | Ngày xuất: '+(batch.dateOut||'')+'"';
+
+  const csv = BOM + [title1,'',title2,title3,'',header,...rows,'',totalRow].join('\r\n');
+
+  const d=new Date(); const pad=n=>String(n).padStart(2,'0');
+  const fname='PhatTam_'+lf.replace('/','_')+'_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'.csv';
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=fname; a.click();
+  showToast('Đã xuất <b>'+orders.length+'</b> đơn ra file <b>'+fname+'</b>!','success');
+}
+
 function exportDebtsExcel(){
   const list = buildDebtList();
   const totalDebt = list.reduce((s,r)=>s+r.totalDebt,0);
