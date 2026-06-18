@@ -44,6 +44,8 @@
 .logout-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;white-space:nowrap;}
 .logout-btn:active{background:rgba(255,255,255,0.3);}
 #save-indicator{font-size:11px;color:#a8f0d8;opacity:0;transition:opacity .3s;white-space:nowrap;}
+#unsaved-banner{display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#c0392b;color:#fff;padding:10px 20px;font-size:13px;font-weight:600;text-align:center;box-shadow:0 -2px 12px rgba(0,0,0,.3);animation:pulse-banner 1.5s infinite;}
+@keyframes pulse-banner{0%,100%{background:#c0392b;}50%{background:#e74c3c;}}
 #top-role{font-size:11px;background:rgba(255,255,255,0.18);padding:2px 7px;border-radius:10px;white-space:nowrap;}
 #btn-backup{display:none;}
 
@@ -211,6 +213,14 @@ tr:hover td{background:#fafafa;}
     <div id="fb-loading" style="text-align:center;padding:18px 0 10px;display:block;">
       <div style="display:inline-block;width:28px;height:28px;border:3px solid #ddd;border-top-color:#0a5c46;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:10px;"></div>
       <div style="font-size:13px;color:#777;" id="fb-loading-msg">⏳ Đang tải dữ liệu từ máy chủ...</div>
+  <!-- Banner cảnh báo dữ liệu chưa lưu lên server -->
+  <div id="unsaved-banner">
+    ⚠️ <span id="unsaved-banner-msg">Có thay đổi chưa được lưu lên máy chủ!</span>
+    &nbsp;&nbsp;
+    <button onclick="retryFirebaseSave()" style="background:#fff;color:#c0392b;border:none;border-radius:6px;padding:4px 12px;font-weight:700;cursor:pointer;font-size:12px;">↑ Thử lưu lại</button>
+    &nbsp;
+    <button onclick="document.getElementById('unsaved-banner').style.display='none'" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;">Ẩn</button>
+  </div>
     </div>
     <!-- Form login - ẩn cho đến khi Firebase load xong -->
     <div id="login-form-wrap" style="display:none;">
@@ -549,7 +559,7 @@ tr:hover td{background:#fafafa;}
               <div id="bk-storage-info" style="font-size:12px;color:#666;"></div>
             </div>
             <div style="background:#e8f7f2;border:1.5px solid #7dccb0;border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:13px;color:#0a5c46;line-height:1.6;">
-              <i class="ti ti-info-circle"></i> Dữ liệu được <b>tự động lưu vào bộ nhớ trình duyệt</b> (localStorage) sau mỗi thao tác. Khi mở lại file HTML trên cùng trình duyệt, dữ liệu sẽ được khôi phục tự động.
+              <i class="ti ti-info-circle"></i> Dữ liệu được <b>tự động lưu lên máy chủ Firebase</b> sau mỗi thao tác. Backup thủ công giúp bạn có thêm bản sao dự phòng trên máy tính.
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn" style="border-color:#c0392b;color:#c0392b;" onclick="clearLocalData()">
@@ -1243,22 +1253,54 @@ function startFirebaseSync(calledFromLogin){
 }
 
 // Đẩy DB lên Firebase
+// Đếm số lần thay đổi chưa được sync lên Firebase
+let _unsavedCount = 0;
+
+function showUnsavedBanner(msg){
+  const b = document.getElementById('unsaved-banner');
+  const m = document.getElementById('unsaved-banner-msg');
+  if(!b) return;
+  if(msg){ if(m) m.textContent = msg; b.style.display = 'block'; }
+  else { b.style.display = 'none'; }
+}
+
+function retryFirebaseSave(){
+  if(_unsavedCount > 0){
+    showSyncStatus('⏳ Đang thử lưu lại...', '#e67e22');
+    saveToDB_Firebase();
+  }
+}
+
 function saveToDB_Firebase(){
   if(_fbSyncing) return;
   _fbSyncing = true;
-  DB._fbVer = Date.now(); // timestamp làm version
+  DB._fbVer = Date.now();
   fbDB.ref(FB_PATH).set(DB)
-    .then(()=>{ _fbSyncing = false; showSyncStatus('✓ Đã lưu lên Firebase', '#0a5c46'); })
-    .catch(e=>{ _fbSyncing = false; showSyncStatus('⚠ Lỗi lưu Firebase: '+e.message, '#e74c3c'); });
+    .then(()=>{
+      _fbSyncing = false;
+      _unsavedCount = 0;
+      showUnsavedBanner(null); // ẩn banner
+      showSyncStatus('✓ Đã lưu lên máy chủ', '#0a5c46');
+    })
+    .catch(e=>{
+      _fbSyncing = false;
+      showSyncStatus('⚠ Lỗi lưu máy chủ: '+e.message, '#e74c3c');
+      // Hiển thị banner cảnh báo
+      showUnsavedBanner('⚠ Có '+_unsavedCount+' thay đổi chưa lưu lên máy chủ! Kiểm tra kết nối mạng.');
+      // Retry tự động sau 15 giây
+      setTimeout(()=>{ if(_unsavedCount>0) saveToDB_Firebase(); }, 15000);
+    });
 }
 
 // Lưu DB vào localStorage + Firebase sau mỗi thao tác ghi
 let _saveTimer = null;
 function saveDB(){
   buildIndexes();
+  _unsavedCount++;
   // Lưu localStorage ngay lập tức (offline cache)
   try { localStorage.setItem(DB_KEY, JSON.stringify(DB)); } catch(e){}
-  showSaveIndicator();
+  // Cập nhật indicator đang chờ lưu
+  showSyncStatus('⏳ Đang lưu...', '#e67e22');
   // Debounce Firebase 800ms để gộp nhiều thay đổi liên tiếp
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(()=>{
