@@ -1191,8 +1191,13 @@ let DB = loadDB();
 if(!DB.debtNotes) DB.debtNotes = {};
 buildIndexes();
 
+// Cờ an toàn: chỉ true khi dữ liệu CHẮC CHẮN đã đồng bộ với server.
+// Mọi đường dẫn không chắc chắn (timeout, lỗi mạng, dữ liệu bất thường)
+// phải để cờ này là false để chặn đăng nhập / chặn ghi lên Firebase.
+let _dataSafeToUse = false;
+
 // Khởi động Firebase sync ngay khi trang load → hiện form login sau khi có dữ liệu
-startFirebaseSync(false);
+startFirebaseSync();
 
 // ---- Firebase sync ----
 let _fbReady = false;
@@ -1208,40 +1213,56 @@ function showSyncStatus(msg, color){
 }
 
 // Lắng nghe thay đổi từ Firebase realtime
-function showLoginForm(msg){
+function showLoginForm(msg, blocked){
   // Ẩn loading, hiện form đăng nhập
   const loading = document.getElementById('fb-loading');
   const form    = document.getElementById('login-form-wrap');
   if(loading) loading.style.display = 'none';
   if(form)    form.style.display    = 'block';
+  // Khoá nút đăng nhập nếu dữ liệu chưa được xác nhận an toàn (chưa chắc đã
+  // đồng bộ với server) — tránh người dùng đăng nhập rồi sửa dữ liệu cũ,
+  // sau đó ghi đè lên dữ liệu mới hơn thực sự đang có trên server.
+  const loginBtn = document.querySelector('#login-form-wrap button[onclick="doLogin()"]');
+  const inpUser  = document.getElementById('inp-user');
+  const inpPass  = document.getElementById('inp-pass');
+  if(blocked){
+    if(loginBtn){ loginBtn.disabled = true; loginBtn.style.opacity = '.5'; loginBtn.style.cursor = 'not-allowed'; }
+    if(inpUser) inpUser.disabled = true;
+    if(inpPass) inpPass.disabled = true;
+  } else {
+    if(loginBtn){ loginBtn.disabled = false; loginBtn.style.opacity = '1'; loginBtn.style.cursor = 'pointer'; }
+    if(inpUser) inpUser.disabled = false;
+    if(inpPass) inpPass.disabled = false;
+  }
   if(msg){
     const msgEl = document.getElementById('fb-loading-msg');
-    if(msgEl){ msgEl.textContent = msg; msgEl.style.color='#e67e22'; loading.style.display='block'; }
+    if(msgEl){ msgEl.textContent = msg; msgEl.style.color = blocked ? '#c0392b' : '#e67e22'; loading.style.display='block'; }
   }
 }
 
-function startFirebaseSync(calledFromLogin){
-  // Nếu gọi từ màn hình login → hiện loading, ẩn form
-  if(!calledFromLogin){
-    const loading = document.getElementById('fb-loading');
-    const form    = document.getElementById('login-form-wrap');
-    if(loading) loading.style.display = 'block';
-    if(form)    form.style.display    = 'none';
-  }
+function startFirebaseSync(){
+  // Trạng thái khởi động: luôn hiện màn hình loading, ẩn form đăng nhập.
+  // Form đăng nhập CHỈ được hiện ra (và mở khoá) bởi showLoginForm() khi
+  // _dataSafeToUse đã được xác nhận true từ dữ liệu thật của server.
+  const loading = document.getElementById('fb-loading');
+  const form    = document.getElementById('login-form-wrap');
+  if(loading) loading.style.display = 'block';
+  if(form)    form.style.display    = 'none';
   showSyncStatus('⏳ Đang kết nối Firebase...', '#e67e22');
 
-  // Timeout 8 giây: nếu Firebase không phản hồi, vẫn cho đăng nhập (offline mode)
+  // Timeout 8 giây: nếu Firebase không phản hồi, KHÔNG cho đăng nhập —
+  // chỉ thông báo và tiếp tục chờ, vì cho phép đăng nhập với dữ liệu cục bộ
+  // cũ rồi lưu lại sẽ có nguy cơ ghi đè dữ liệu mới hơn thực sự trên server.
   const fbTimeout = setTimeout(()=>{
     if(!_fbReady){
-      _fbReady = true;
-      showLoginForm('⚠ Không kết nối được máy chủ – dùng dữ liệu cục bộ');
-      setTimeout(()=>showLoginForm(), 2500);
+      showLoginForm('⚠ Đang chờ máy chủ phản hồi lâu hơn dự kiến... Vui lòng đợi hoặc kiểm tra mạng.', true);
     }
   }, 8000);
 
   fbDB.ref(FB_PATH).on('value', snap => {
     const data = snap.val();
     if(data && data.users && data.nextId){
+      try { localStorage.setItem(DB_KEY + '_server_seen', '1'); } catch(e){}
       if(!_fbReady || (data._fbVer || 0) > (DB._fbVer || 0)){
         DB = data;
         if(!DB.debtNotes) DB.debtNotes = {};
@@ -1250,28 +1271,53 @@ function startFirebaseSync(calledFromLogin){
         // Nếu đã đăng nhập → re-render trang hiện tại
         if(_fbReady && currentUser && currentPage && RENDERERS[currentPage]) RENDERERS[currentPage]();
       }
+      // Dữ liệu vừa nhận trực tiếp từ server — an toàn để dùng và cho đăng nhập.
+      _dataSafeToUse = true;
+      clearTimeout(fbTimeout);
+      if(!_fbReady){
+        _fbReady = true;
+        showSyncStatus('✓ Firebase đã kết nối', '#0a5c46');
+      }
+      // Chỉ mở form đăng nhập nếu chưa có người đăng nhập (tránh ghi đè giao
+      // diện khi đang dùng app, vì hàm này còn được gọi lại mỗi khi server
+      // có cập nhật mới — 'on value' là listener thường trực, không chỉ chạy 1 lần).
+      if(!currentUser) showLoginForm(null, false);
+      return;
     }
+
+    // data rỗng hoặc thiếu field bắt buộc — KHÔNG suy luận là "server trống"
+    // và KHÔNG cho đăng nhập, vì có thể chỉ là lỗi đọc/mạng tạm thời.
     if(!_fbReady){
       clearTimeout(fbTimeout);
       _fbReady = true;
-      showSyncStatus('✓ Firebase đã kết nối', '#0a5c46');
-      if(!data || !data.users){
-        // Firebase trống → đẩy dữ liệu local lên
+      const neverInitialized = !localStorage.getItem(DB_KEY + '_server_seen');
+      if(neverInitialized){
+        // Trường hợp duy nhất hợp lệ để khởi tạo từ local: server CHƯA TỪNG
+        // có dữ liệu (lần setup đầu tiên của cả hệ thống).
+        console.warn('Firebase chưa có dữ liệu lần nào — khởi tạo từ dữ liệu cục bộ.');
+        showSyncStatus('⏳ Đang khởi tạo dữ liệu lần đầu lên máy chủ...', '#e67e22');
         saveToDB_Firebase();
+        _dataSafeToUse = true;
+        if(!currentUser) showLoginForm(null, false);
+      } else {
+        // Đã từng thấy dữ liệu server trước đây nhưng giờ trống/lỗi đọc
+        // → KHÔNG cho đăng nhập, cảnh báo rõ và yêu cầu kiểm tra/tải lại.
+        console.error('Firebase trả về dữ liệu rỗng dù trước đó đã có dữ liệu. Chặn đăng nhập để tránh mất dữ liệu.');
+        showSyncStatus('⚠ Không đọc được dữ liệu máy chủ!', '#e74c3c');
+        _dataSafeToUse = false;
+        if(!currentUser) showLoginForm('⚠ Không tải được dữ liệu mới nhất từ máy chủ. Vui lòng tải lại trang (F5) trước khi đăng nhập, để tránh ghi đè mất dữ liệu.', true);
       }
-      if(!calledFromLogin){
-        // Hiện form đăng nhập sau khi load xong
-        showLoginForm();
-      }
+    } else if(!_dataSafeToUse && !currentUser){
+      showLoginForm('⚠ Không tải được dữ liệu mới nhất từ máy chủ. Vui lòng tải lại trang (F5) trước khi đăng nhập.', true);
     }
   }, err => {
     clearTimeout(fbTimeout);
     if(!_fbReady){
       _fbReady = true;
-      showLoginForm('⚠ Không kết nối được máy chủ – dùng dữ liệu cục bộ');
-      setTimeout(()=>showLoginForm(), 2500);
     }
+    _dataSafeToUse = false;
     showSyncStatus('⚠ Mất kết nối Firebase', '#e74c3c');
+    if(!currentUser) showLoginForm('⚠ Mất kết nối máy chủ. Vui lòng kiểm tra mạng và tải lại trang (F5) trước khi đăng nhập.', true);
   });
 }
 
@@ -1297,7 +1343,9 @@ function retryFirebaseSave(){
 function saveToDB_Firebase(){
   if(_fbSyncing) return;
   _fbSyncing = true;
-  DB._fbVer = Date.now();
+  // Dùng timestamp của SERVER Firebase (không phải đồng hồ máy khách) để tránh
+  // trường hợp máy bị lệch giờ ghi đè nhầm lên dữ liệu mới hơn của người khác.
+  DB._fbVer = firebase.database.ServerValue.TIMESTAMP;
   fbDB.ref(FB_PATH).set(DB)
     .then(()=>{
       _fbSyncing = false;
@@ -1448,7 +1496,9 @@ function getActiveBatches(){return DB.batches.filter(b=>b.lotStatus!=='Hủy lô
 function lotStatus(code){
   const b=DB.batches.find(x=>x.code===code);
   if(b&&b.lotStatus==='Hủy lô') return 'Hủy lô';
-  const tot=getLotBoxes(code); const bkd=getLotBooked(code); const pct=tot?bkd/tot:0;
+  const tot=getLotBoxes(code); const avail=getLotAvail(code);
+  // Tỉ lệ đã dùng = (Tổng - Còn tồn) / Tổng — Còn tồn đã tính theo tỉ lệ dồn riêng từng đối tượng
+  const pct=tot?(tot-avail)/tot:0;
   if(pct>=0.95)return 'Gần hết'; if(pct>=0.6)return 'Sắp hết'; return 'Còn hàng';
 }
 function badgeLot(code){const s=lotStatus(code);if(s==='Hủy lô')return '<span class="badge" style="background:#f0e0e0;color:#8b0000;border:1px solid #e0a0a0;font-size:11px;padding:2px 7px;border-radius:10px;">🚫 Hủy lô</span>';const m={'Gần hết':'b-red','Sắp hết':'b-amber','Còn hàng':'b-green'};return `<span class="badge ${m[s]||'b-gray'}">${s}</span>`;}
@@ -1478,10 +1528,18 @@ function setBottomNav(id){
 
 
 function doLogin(){
+  // Chốt chặn cuối: tuyệt đối không cho đăng nhập nếu dữ liệu chưa được xác
+  // nhận là đã đồng bộ an toàn với server — phòng trường hợp nút bị bấm
+  // trước khi bị khoá kịp, hoặc gọi doLogin() bằng cách khác (Enter, script...).
+  if(!_dataSafeToUse){
+    document.getElementById('login-err').textContent = 'Chưa xác nhận dữ liệu mới nhất từ máy chủ. Vui lòng tải lại trang (F5) và thử lại.';
+    document.getElementById('login-err').style.display='block';
+    return;
+  }
   const u=document.getElementById('inp-user').value.trim();
   const p=document.getElementById('inp-pass').value;
   const found=DB.users.find(x=>x.login===u&&x.pass===p);
-  if(!found){document.getElementById('login-err').style.display='block';return;}
+  if(!found){document.getElementById('login-err').textContent='Sai tên đăng nhập hoặc mật khẩu!';document.getElementById('login-err').style.display='block';return;}
   currentUser=found;
   document.getElementById('login-err').style.display='none';
   document.getElementById('login-screen').style.display='none';
@@ -1688,7 +1746,7 @@ function renderDashboard(){
   document.getElementById('dash-stats').innerHTML=`
     <div class="stat-box"><div class="lbl"><i class="ti ti-package"></i> Tổng lô tằm</div><div class="val">${totalLots}</div><div class="sub">Lô chưa xuất</div></div>
     <div class="stat-box green"><div class="lbl"><i class="ti ti-box"></i> Tổng số hộp</div><div class="val">${totalBoxes.toLocaleString()}</div><div class="sub">Dự kiến các lô chưa xuất</div></div>
-    <div class="stat-box amber"><div class="lbl"><i class="ti ti-check"></i> Đã đặt</div><div class="val">${booked.toLocaleString()}</div><div class="sub">${totalBoxes?Math.round(booked/totalBoxes*100):0}% tổng hộp</div></div>
+    <div class="stat-box amber"><div class="lbl"><i class="ti ti-check"></i> Đã đặt</div><div class="val">${booked.toLocaleString()}</div><div class="sub">Số hộp khách đã đặt</div></div>
     <div class="stat-box red"><div class="lbl"><i class="ti ti-archive"></i> Còn tồn</div><div class="val">${avail.toLocaleString()}</div><div class="sub">${totalBoxes?Math.round(avail/totalBoxes*100):0}% chưa có khách</div></div>`;
   renderDashLots();
   const df=document.getElementById('dash-lot-filter');
@@ -1700,7 +1758,7 @@ function renderDashLots(){
   // Lô bị hủy — hiển thị riêng ở cuối bảng, gạch ngang
   const cancelledBatches=DB.batches.filter(b=>b.lotStatus==='Hủy lô'&&lotNotYetExported(b));
   const rows=activeBatches.map((b,i)=>{
-    const bkd=getLotBooked(b.code); const avail=getLotAvail(b.code); const pct=b.boxes?Math.round(bkd/b.boxes*100):0;
+    const bkd=getLotBooked(b.code); const avail=getLotAvail(b.code); const pct=b.boxes?Math.round((b.boxes-avail)/b.boxes*100):0;
     const color=pct>=95?'#e24b4a':pct>=60?'#EF9F27':'#1D9E75';
     const txtColor=pct>=95?'#8b1a1a':pct>=60?'#7a4500':'#0a5c46';
     const harvest=calcHarvestRange(b.dateOut);
@@ -1716,7 +1774,7 @@ function renderDashLots(){
   const sumTotalBoxes=Math.round(activeBatches.reduce((s,b)=>s+b.boxes,0)*100)/100;
   const sumBooked=Math.round(activeBatches.reduce((s,b)=>s+getLotBooked(b.code),0)*100)/100;
   const sumAvail=Math.round(activeBatches.reduce((s,b)=>s+getLotAvail(b.code),0)*100)/100;
-  const sumPct=sumTotalBoxes?Math.round(sumBooked/sumTotalBoxes*100):0;
+  const sumPct=sumTotalBoxes?Math.round((sumTotalBoxes-sumAvail)/sumTotalBoxes*100):0;
   const sumColor=sumPct>=95?'#8b1a1a':sumPct>=60?'#7a4500':'#0a5c46';
   const totalRowLots=activeBatches.length>0?`<tr style="background:#f0f7f4;font-weight:700;border-top:2px solid #7dccb0;">
     <td colspan="4" style="text-align:right;color:#444;padding:8px 12px;">TỔNG CỘNG (${activeBatches.length} lô)</td>
