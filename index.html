@@ -806,8 +806,9 @@ tr:hover td{background:#fafafa;}
   <div class="form-grid">
     <div class="fg"><label>Lô tằm số *</label><input id="b-code" type="text" placeholder="VD: LT-2025-05"/></div>
     <div class="fg"><label>Số lượng bìa trứng *</label><input id="b-eggs" type="number" min="1" placeholder="Số bìa" oninput="calcBoxes()"/></div>
-    <div class="fg"><label>Tỉ lệ dồn <span style="font-weight:400;color:#888;font-size:11px;">(VD: 0.75 → Hộp = Bìa × 4 × 0.75)</span></label><input id="b-rate" type="number" value="0.75" min="0.01" max="99" step="0.01" oninput="calcBoxes()"/></div>
-    <div class="fg"><label>Hộp dự kiến</label><input id="b-boxes" type="number" step="0.01" placeholder="Tự động tính" readonly style="background:#f5f5f5;"/></div>
+    <div class="fg"><label>Số hộp chuẩn <span style="font-weight:400;color:#888;font-size:11px;">(= Bìa × 4)</span></label><input id="b-boxes" type="number" step="0.01" placeholder="Tự động tính" readonly style="background:#f5f5f5;"/></div>
+    <div class="fg"><label>Tỉ lệ dồn cho Dân <span style="font-weight:400;color:#888;font-size:11px;">(VD: 0.75)</span></label><input id="b-rate-dan" type="number" value="0.75" min="0.01" max="99" step="0.01"/></div>
+    <div class="fg"><label>Tỉ lệ dồn cho Đại Lý <span style="font-weight:400;color:#888;font-size:11px;">(VD: 0.75)</span></label><input id="b-rate-dl" type="number" value="0.75" min="0.01" max="99" step="0.01"/></div>
     <div class="fg"><label>Ngày nhập trứng *</label><input id="b-in" type="date"/></div>
     <div class="fg"><label>Ngày xuất tằm *</label><input id="b-out" type="date"/></div>
   </div>
@@ -840,11 +841,14 @@ tr:hover td{background:#fafafa;}
   <div class="form-grid">
     <div class="fg"><label>Lô tằm số *</label><input id="eb-code" type="text"/></div>
     <div class="fg"><label>Số lượng bìa trứng *</label><input id="eb-eggs" type="number" min="1" oninput="calcEditBoxes()"/></div>
-    <div class="fg"><label>Tỉ lệ dồn <span style="font-weight:400;color:#888;font-size:11px;">(Hộp = Bìa × 4 × Tỉ lệ)</span></label>
-      <input id="eb-rate" type="number" min="0.01" max="99" step="0.01" oninput="calcEditBoxes()"/>
-    </div>
-    <div class="fg"><label>Hộp dự kiến</label>
+    <div class="fg"><label>Số hộp chuẩn <span style="font-weight:400;color:#888;font-size:11px;">(= Bìa × 4)</span></label>
       <input id="eb-boxes" type="number" step="0.01" readonly style="background:#f5f5f5;"/>
+    </div>
+    <div class="fg"><label>Tỉ lệ dồn cho Dân</label>
+      <input id="eb-rate-dan" type="number" min="0.01" max="99" step="0.01"/>
+    </div>
+    <div class="fg"><label>Tỉ lệ dồn cho Đại Lý</label>
+      <input id="eb-rate-dl" type="number" min="0.01" max="99" step="0.01"/>
     </div>
     <div class="fg"><label>Ngày nhập trứng *</label><input id="eb-in" type="date"/></div>
     <div class="fg"><label>Ngày xuất tằm *</label><input id="eb-out" type="date" oninput="calcEditBoxes()"/></div>
@@ -1147,6 +1151,25 @@ function buildIndexes(){
   _custMap={};  DB.customers.forEach(c=>{_custMap[c.id]=c;});
   _txMap={};    DB.transactions.forEach(t=>{_txMap[t.custId+'_'+t.lotCode]=t;});
   _ordMap={};   DB.orders.forEach(o=>{_ordMap[o.custId+'_'+o.lotCode]=o;});
+  migrateBatchBoxes();
+}
+// Sửa lại "Số hộp chuẩn" cho các lô cũ: boxes phải = eggs × 4 (không nhân tỉ lệ dồn cũ)
+let _migratedBatchBoxes = false;
+function migrateBatchBoxes(){
+  if(_migratedBatchBoxes) return;
+  let changed=false;
+  DB.batches.forEach(b=>{
+    const correctBoxes = b.eggs ? Math.round(b.eggs*4*100)/100 : 0;
+    if(correctBoxes && Math.abs((b.boxes||0)-correctBoxes) > 0.001){
+      b.boxes = correctBoxes;
+      changed=true;
+    }
+    // Đảm bảo có tỉ lệ dồn riêng (mặc định 0.75 nếu thiếu, hoặc dùng rate cũ nếu có)
+    if(b.rateDan===undefined) b.rateDan = b.rate || 0.75;
+    if(b.rateDL===undefined)  b.rateDL  = b.rate || 0.75;
+  });
+  _migratedBatchBoxes = true;
+  if(changed) setTimeout(()=>saveDB(), 500); // lưu lại sau khi migrate
 }
 function getCustFast(id){return _custMap[id]||{name:'?',code:'?',phone:'',cccd:''};}
 function getTxFast(cId,lc){return _txMap[cId+'_'+lc]||null;}
@@ -1370,8 +1393,28 @@ function getLotBooked(code){
   const sum=DB.orders.filter(o=>o.lotCode===code&&o.status!=='Khách hủy').reduce((s,o)=>s+o.boxes,0);
   return Math.round(sum*100)/100;
 }
+// Đã đặt riêng theo đối tượng (Dân / Đại Lý)
+function getLotBookedByType(code,type){
+  const sum=DB.orders.filter(o=>{
+    if(o.lotCode!==code||o.status==='Khách hủy') return false;
+    const c=DB.customers.find(x=>x.id===o.custId);
+    const ctype=(c&&c.type==='Đại Lý')?'Đại Lý':'Dân';
+    return ctype===type;
+  }).reduce((s,o)=>s+o.boxes,0);
+  return Math.round(sum*100)/100;
+}
 function getLotBoxes(code){const b=DB.batches.find(b=>b.code===code);return b?b.boxes:0;}
-function getLotAvail(code){return Math.round((getLotBoxes(code)-getLotBooked(code))*100)/100;}
+// Còn tồn = Số hộp chuẩn - (Đặt Dân × tỉ lệ dồn Dân) - (Đặt Đại Lý × tỉ lệ dồn Đại Lý)
+function getLotAvail(code){
+  const b=DB.batches.find(x=>x.code===code);
+  if(!b) return 0;
+  const bookedDan=getLotBookedByType(code,'Dân');
+  const bookedDL=getLotBookedByType(code,'Đại Lý');
+  const rateDan=b.rateDan||1;
+  const rateDL=b.rateDL||1;
+  const used=bookedDan*rateDan+bookedDL*rateDL;
+  return Math.round((b.boxes-used)*100)/100;
+}
 function getLotSold(code){return DB.transactions.filter(t=>t.lotCode===code).reduce((s,t)=>s+t.boxes,0);}
 function getLotBoxes(code){const b=DB.batches.find(b=>b.code===code);return b?b.boxes:0;}
 
@@ -1565,8 +1608,9 @@ function populateModal(id){
     toggleSpField();
   }
   if(id==='modal-batch'){
-    // Reset rate về mặc định 0.75
-    document.getElementById('b-rate').value='0.75';
+    // Reset tỉ lệ dồn về mặc định 0.75
+    document.getElementById('b-rate-dan').value='0.75';
+    document.getElementById('b-rate-dl').value='0.75';
   }
   if(id==='modal-cust'){
     const sel=document.getElementById('c-sp');
@@ -1640,7 +1684,7 @@ function renderDashboard(){
   // 3 ô Tổng hộp / Đã đặt / Còn tồn tính theo lô CHƯA XUẤT (dateOut >= hôm nay)
   const totalBoxes=Math.round(notExportedBatches.reduce((s,b)=>s+b.boxes,0)*100)/100;
   const booked=Math.round(notExportedBatches.reduce((s,b)=>s+getLotBooked(b.code),0)*100)/100;
-  const avail=Math.round((totalBoxes-booked)*100)/100;
+  const avail=Math.round(notExportedBatches.reduce((s,b)=>s+getLotAvail(b.code),0)*100)/100;
   document.getElementById('dash-stats').innerHTML=`
     <div class="stat-box"><div class="lbl"><i class="ti ti-package"></i> Tổng lô tằm</div><div class="val">${totalLots}</div><div class="sub">Lô chưa xuất</div></div>
     <div class="stat-box green"><div class="lbl"><i class="ti ti-box"></i> Tổng số hộp</div><div class="val">${totalBoxes.toLocaleString()}</div><div class="sub">Dự kiến các lô chưa xuất</div></div>
@@ -1656,7 +1700,7 @@ function renderDashLots(){
   // Lô bị hủy — hiển thị riêng ở cuối bảng, gạch ngang
   const cancelledBatches=DB.batches.filter(b=>b.lotStatus==='Hủy lô'&&lotNotYetExported(b));
   const rows=activeBatches.map((b,i)=>{
-    const bkd=getLotBooked(b.code); const avail=Math.round((b.boxes-bkd)*100)/100; const pct=b.boxes?Math.round(bkd/b.boxes*100):0;
+    const bkd=getLotBooked(b.code); const avail=getLotAvail(b.code); const pct=b.boxes?Math.round(bkd/b.boxes*100):0;
     const color=pct>=95?'#e24b4a':pct>=60?'#EF9F27':'#1D9E75';
     const txtColor=pct>=95?'#8b1a1a':pct>=60?'#7a4500':'#0a5c46';
     const harvest=calcHarvestRange(b.dateOut);
@@ -1671,7 +1715,7 @@ function renderDashLots(){
   // Dòng tổng bảng lô tằm
   const sumTotalBoxes=Math.round(activeBatches.reduce((s,b)=>s+b.boxes,0)*100)/100;
   const sumBooked=Math.round(activeBatches.reduce((s,b)=>s+getLotBooked(b.code),0)*100)/100;
-  const sumAvail=Math.round((sumTotalBoxes-sumBooked)*100)/100;
+  const sumAvail=Math.round(activeBatches.reduce((s,b)=>s+getLotAvail(b.code),0)*100)/100;
   const sumPct=sumTotalBoxes?Math.round(sumBooked/sumTotalBoxes*100):0;
   const sumColor=sumPct>=95?'#8b1a1a':sumPct>=60?'#7a4500':'#0a5c46';
   const totalRowLots=activeBatches.length>0?`<tr style="background:#f0f7f4;font-weight:700;border-top:2px solid #7dccb0;">
@@ -2017,9 +2061,8 @@ function saveEditCust(){
 // ============================================================
 function calcBoxes(){
   const eggs=parseFloat(document.getElementById('b-eggs').value)||0;
-  const rate=parseFloat(document.getElementById('b-rate').value)||0;
-  // Công thức: Hộp dự kiến = Số bìa × 4 × Tỉ lệ dồn — lấy 2 số thập phân
-  const boxes=eggs&&rate?Math.round(eggs*4*rate*100)/100:0;
+  // Công thức: Số hộp chuẩn = Số bìa × 4
+  const boxes=eggs?Math.round(eggs*4*100)/100:0;
   document.getElementById('b-boxes').value=boxes||'';
 }
 
@@ -2042,11 +2085,11 @@ function renderBatches(){
   const pgB=pgSlice('batch',list);
   _pgState['batch']._pages=pgB.pages;
   const rows=pgB.slice.map((b,i)=>{
-    const bkd=getLotBooked(b.code); const avail=Math.round((b.boxes-bkd)*100)/100;
+    const bkd=getLotBooked(b.code); const avail=getLotAvail(b.code);
     const txtColor=avail<=10?'#8b1a1a':avail<=b.boxes*0.4?'#7a4500':'#0a5c46';
     const harvest=calcHarvestRange(b.dateOut);
     return `<tr ondblclick="openEditBatch('${b.code}')" style="cursor:pointer;" title="Nhấp đúp để sửa">
-      <td>${pgB.start+i+1}</td><td style="font-weight:700;">${b.code}</td><td>${b.eggs}</td><td>${b.rate}</td>
+      <td>${pgB.start+i+1}</td><td style="font-weight:700;">${b.code}</td><td>${b.eggs}</td>
       <td>${b.boxes}</td><td>${b.dateIn}</td><td>${b.dateOut}</td>
       <td style="color:#185FA5;font-size:12px;font-weight:600;">${harvest}</td>
       <td>${bkd}</td>
@@ -2056,31 +2099,33 @@ function renderBatches(){
     </tr>`;
   }).join('');
   document.getElementById('batch-tbl').innerHTML=`<thead><tr>
-    <th>#</th><th>Lô tằm số</th><th>Số bìa trứng</th><th>Tỉ lệ dồn</th><th>Hộp dự kiến</th>
+    <th>#</th><th>Lô tằm số</th><th>Số bìa trứng</th><th>Số hộp chuẩn</th>
     <th>Ngày nhập trứng</th><th>Ngày xuất tằm</th>
     <th style="color:#185FA5;">Ngày dự kiến thu kén</th>
     <th>Đã đặt</th><th>Còn tồn</th><th>Trạng thái</th><th>Xoá</th>
-  </tr></thead><tbody>${rows||'<tr><td colspan="12" style="text-align:center;padding:20px;color:#999;">Chưa có lô tằm</td></tr>'}</tbody>`;
+  </tr></thead><tbody>${rows||'<tr><td colspan="11" style="text-align:center;padding:20px;color:#999;">Chưa có lô tằm</td></tr>'}</tbody>`;
   pgRender('batch-pgbar','batch',pgB);
 }
 function saveBatch(){
   const code=document.getElementById('b-code').value.trim();
   const eggs=parseFloat(document.getElementById('b-eggs').value)||0;
-  const rate=parseFloat(document.getElementById('b-rate').value)||0;
-  const boxes=parseFloat(document.getElementById('b-boxes').value)||(eggs&&rate?Math.round(eggs*4*rate*100)/100:0);
+  const boxes=parseFloat(document.getElementById('b-boxes').value)||(eggs?Math.round(eggs*4*100)/100:0);
+  const rateDan=parseFloat(document.getElementById('b-rate-dan').value)||0;
+  const rateDL=parseFloat(document.getElementById('b-rate-dl').value)||0;
   const dateIn=document.getElementById('b-in').value;
   const dateOut=document.getElementById('b-out').value;
-  if(!code||!eggs||!rate||!dateIn||!dateOut){showToast('Vui lòng điền đầy đủ!','warn');return;}
-  if(rate<=0||rate>99){showToast('Tỉ lệ dồn phải từ 0.01 đến 99!','warn');return;}
+  if(!code||!eggs||!dateIn||!dateOut){showToast('Vui lòng điền đầy đủ!','warn');return;}
+  if(rateDan<=0||rateDan>99||rateDL<=0||rateDL>99){showToast('Tỉ lệ dồn phải từ 0.01 đến 99!','warn');return;}
   if(DB.batches.find(b=>b.code===code)){showToast('Mã lô đã tồn tại! Vui lòng chọn mã khác.','error');return;}
   const khayStd = parseFloat(document.getElementById('b-khay-std').value)||0;
   const khayDL  = parseFloat(document.getElementById('b-khay-dl').value)||0;
   const khayDan = parseFloat(document.getElementById('b-khay-dan').value)||0;
-  DB.batches.push({id:DB.nextId.batch++,code,eggs,rate,boxes,dateIn:fmtDate(dateIn),dateOut:fmtDate(dateOut),khayStd,khayDL,khayDan});
+  DB.batches.push({id:DB.nextId.batch++,code,eggs,boxes,rateDan,rateDL,dateIn:fmtDate(dateIn),dateOut:fmtDate(dateOut),khayStd,khayDL,khayDan});
   closeModal('modal-batch'); renderBatches(); refreshFilters(); saveDB();
-  showToast(`Đã thêm lô tằm <b>${code}</b> (${boxes} hộp) thành công!`,'success');
+  showToast(`Đã thêm lô tằm <b>${code}</b> (${boxes} hộp chuẩn) thành công!`,'success');
   ['b-code','b-eggs','b-boxes','b-in','b-out','b-khay-std','b-khay-dl','b-khay-dan'].forEach(x=>document.getElementById(x).value='');
-  document.getElementById('b-rate').value=500;
+  document.getElementById('b-rate-dan').value=0.75;
+  document.getElementById('b-rate-dl').value=0.75;
 }
 function fmtDate(s){if(!s)return '';const[y,m,d]=s.split('-');return `${d}/${m}/${y}`;}
 function deleteBatch(code){
@@ -2096,7 +2141,8 @@ function openEditBatch(code){
   document.getElementById('eb-orig-code').value=code;
   document.getElementById('eb-code').value=b.code;
   document.getElementById('eb-eggs').value=b.eggs;
-  document.getElementById('eb-rate').value=b.rate;
+  document.getElementById('eb-rate-dan').value=b.rateDan||0.75;
+  document.getElementById('eb-rate-dl').value=b.rateDL||0.75;
   document.getElementById('eb-boxes').value=b.boxes;
   // pre-fill dates: convert dd/mm/yyyy → yyyy-mm-dd
   const toInputDate=s=>{if(!s)return '';const[d,m,y]=s.split('/');return `${y}-${m}-${d}`;};
@@ -2129,8 +2175,7 @@ function onEditBatchStatusChange(){
 }
 function calcEditBoxes(){
   const eggs=parseFloat(document.getElementById('eb-eggs').value)||0;
-  const rate=parseFloat(document.getElementById('eb-rate').value)||0;
-  const boxes=eggs&&rate?Math.round(eggs*4*rate*100)/100:0;
+  const boxes=eggs?Math.round(eggs*4*100)/100:0;
   document.getElementById('eb-boxes').value=boxes||'';
   const dateOut=document.getElementById('eb-out').value;
   if(dateOut){
@@ -2145,12 +2190,13 @@ function saveEditBatch(){
   if(!b)return;
   const newCode=document.getElementById('eb-code').value.trim();
   const eggs=parseFloat(document.getElementById('eb-eggs').value)||0;
-  const rate=parseFloat(document.getElementById('eb-rate').value)||0;
-  const boxes=parseFloat(document.getElementById('eb-boxes').value)||(eggs&&rate?Math.round(eggs*4*rate*100)/100:0);
+  const boxes=parseFloat(document.getElementById('eb-boxes').value)||(eggs?Math.round(eggs*4*100)/100:0);
+  const rateDan=parseFloat(document.getElementById('eb-rate-dan').value)||0;
+  const rateDL=parseFloat(document.getElementById('eb-rate-dl').value)||0;
   const dateIn=document.getElementById('eb-in').value;
   const dateOut=document.getElementById('eb-out').value;
-  if(!newCode||!eggs||!rate||!dateIn||!dateOut){showToast('Vui lòng điền đầy đủ!','warn');return;}
-  if(rate<=0||rate>99){showToast('Tỉ lệ dồn phải từ 0.01 đến 99!','warn');return;}
+  if(!newCode||!eggs||!dateIn||!dateOut){showToast('Vui lòng điền đầy đủ!','warn');return;}
+  if(rateDan<=0||rateDan>99||rateDL<=0||rateDL>99){showToast('Tỉ lệ dồn phải từ 0.01 đến 99!','warn');return;}
   // check code uniqueness (excluding self)
   if(newCode!==origCode&&DB.batches.find(x=>x.code===newCode)){
     showToast(`Mã lô "<b>${newCode}</b>" đã tồn tại! Vui lòng chọn mã khác.`,'error');return;
@@ -2160,7 +2206,7 @@ function saveEditBatch(){
   const khayDL  = parseFloat(document.getElementById('eb-khay-dl').value)||0;
   const khayDan = parseFloat(document.getElementById('eb-khay-dan').value)||0;
   const lotStatus = document.getElementById('eb-lot-status').value;
-  b.code=newCode; b.eggs=eggs; b.rate=rate; b.boxes=boxes;
+  b.code=newCode; b.eggs=eggs; b.boxes=boxes; b.rateDan=rateDan; b.rateDL=rateDL;
   b.dateIn=fmtDate(dateIn); b.dateOut=fmtDate(dateOut);
   b.khayStd=khayStd; b.khayDL=khayDL; b.khayDan=khayDan;
   b.lotStatus=lotStatus;
@@ -3110,7 +3156,8 @@ function saveEditOrder(){
   const o=DB.orders.find(x=>x.id===id);
   if(!o)return;
   const newBoxes=parseFloat(parseFloat(document.getElementById('eo-boxes').value||o.boxes).toFixed(2));
-  const newPrice=parseFloat(document.getElementById('eo-price').value)||o.price||0;
+  const priceRaw=document.getElementById('eo-price').value;
+  const newPrice=(priceRaw==='')?(o.price||0):(parseFloat(priceRaw)||0);
   const status=document.getElementById('eo-status').value;
   const note=document.getElementById('eo-note').value.trim();
   const cancelReason=document.getElementById('eo-cancel-reason').value.trim();
