@@ -1115,6 +1115,15 @@ const fbDB = firebase.database();
 const fbAuth = firebase.auth();
 const FB_PATH = 'honghha_tamworm'; // node gốc trên Firebase
 
+// ============================================================
+// VERSION CHECK — chặn dùng bản cũ khi đã có bản mới deploy
+// ============================================================
+// QUAN TRỌNG: mỗi lần cập nhật file index.html mới lên Netlify, PHẢI tăng số
+// này lên (ví dụ: 2026061801 -> 2026061802). Format gợi ý: YYYYMMDDxx.
+// Không tăng số này thì cơ chế chặn bản cũ sẽ không hoạt động.
+const APP_VERSION = 2026062702;
+const FB_VERSION_PATH = 'honghha_app_version'; // node riêng lưu version mới nhất
+
 // Đăng nhập ẩn danh để đáp ứng security rules "auth != null"
 fbAuth.signInAnonymously().catch(err => {
   console.error('Firebase auth error:', err);
@@ -1210,6 +1219,7 @@ buildIndexes();
 let _dataSafeToUse = false;
 
 // Khởi động Firebase sync ngay khi trang load → hiện form login sau khi có dữ liệu
+startVersionCheck();
 startFirebaseSync();
 
 // ---- Firebase sync ----
@@ -1263,6 +1273,73 @@ function manualInitFromLocal(){
   saveToDB_Firebase();
   _dataSafeToUse = true;
   showLoginForm(null, false, false);
+}
+
+// ============================================================
+// VERSION CHECK
+// ============================================================
+let _versionBlocked = false;
+function startVersionCheck(){
+  fbDB.ref(FB_VERSION_PATH).on('value', snap => {
+    const serverVer = snap.val();
+    if(serverVer && APP_VERSION < serverVer){
+      // Bản đang chạy CŨ HƠN bản mới nhất đã từng deploy lên Netlify
+      // → chặn tuyệt đối, không cho đăng nhập, yêu cầu tải lại trang.
+      _versionBlocked = true;
+      _dataSafeToUse = false;
+      showOutdatedVersionBlock();
+    } else if(serverVer && APP_VERSION > serverVer){
+      // Bản đang chạy MỚI HƠN bản ghi trên server (vừa deploy bản mới)
+      // → cập nhật version mới nhất lên Firebase để các máy khác phát hiện.
+      fbDB.ref(FB_VERSION_PATH).set(APP_VERSION);
+    } else if(!serverVer){
+      // Firebase chưa từng lưu version nào — ghi version hiện tại lên.
+      fbDB.ref(FB_VERSION_PATH).set(APP_VERSION);
+    }
+    // serverVer === APP_VERSION → khớp, không làm gì.
+  });
+}
+
+// Hiện màn hình chặn toàn trang — áp dụng cho cả người đang ở màn hình đăng
+// nhập VÀ người đã đăng nhập đang dùng app. Overlay phủ kín z-index cao nhất,
+// không cho tương tác gì khác ngoài nút tải lại, và tự đếm ngược tải lại.
+function showOutdatedVersionBlock(){
+  if(document.getElementById('outdated-version-block')) return; // đã hiện rồi
+  const loginBtn = document.querySelector('#login-form-wrap button[onclick="doLogin()"]');
+  if(loginBtn){ loginBtn.disabled = true; loginBtn.style.opacity='.5'; loginBtn.style.cursor='not-allowed'; }
+
+  const isLoggedIn = !!currentUser;
+  const message = isLoggedIn
+    ? 'Hệ thống vừa được cập nhật phiên bản mới. Để tránh dữ liệu bị ghi sai do dùng bản cũ, trang sẽ tự động tải lại sau giây lát. Mọi thay đổi chưa lưu có thể bị mất — vui lòng kiểm tra lại sau khi tải lại trang.'
+    : 'Hệ thống vừa được cập nhật phiên bản mới. Trang bạn đang xem là bản cũ, không thể đăng nhập để tránh xung đột dữ liệu. Trang sẽ tự động tải lại sau giây lát.';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'outdated-version-block';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(10,30,20,.92);z-index:999999;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:14px;padding:32px 28px;max-width:420px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.3);">
+      <div style="font-size:40px;margin-bottom:10px;">🔄</div>
+      <div style="font-weight:700;font-size:18px;color:#c0392b;margin-bottom:8px;">Phiên bản đã cũ!</div>
+      <div style="font-size:14px;color:#555;margin-bottom:16px;line-height:1.5;">${message}</div>
+      <div style="font-size:13px;color:#999;margin-bottom:16px;">Tự động tải lại sau <b id="reload-countdown">8</b> giây...</div>
+      <button onclick="location.reload(true)" style="background:#0a5c46;color:#fff;border:none;border-radius:8px;padding:12px 28px;font-size:15px;font-weight:700;cursor:pointer;">
+        ↻ Tải lại trang ngay
+      </button>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  // Đếm ngược rồi tự tải lại — đảm bảo người dùng không thể trì hoãn vô thời
+  // hạn việc thoát khỏi bản cũ, kể cả khi không chủ động bấm nút.
+  let secondsLeft = 8;
+  const countdownEl = document.getElementById('reload-countdown');
+  const countdownTimer = setInterval(()=>{
+    secondsLeft--;
+    if(countdownEl) countdownEl.textContent = secondsLeft;
+    if(secondsLeft <= 0){
+      clearInterval(countdownTimer);
+      location.reload(true);
+    }
+  }, 1000);
 }
 
 function startFirebaseSync(){
@@ -1553,6 +1630,11 @@ function setBottomNav(id){
 
 
 function doLogin(){
+  // Chốt chặn: phiên bản đã cũ so với bản mới nhất trên server.
+  if(_versionBlocked){
+    showOutdatedVersionBlock();
+    return;
+  }
   // Chốt chặn cuối: tuyệt đối không cho đăng nhập nếu dữ liệu chưa được xác
   // nhận là đã đồng bộ an toàn với server — phòng trường hợp nút bị bấm
   // trước khi bị khoá kịp, hoặc gọi doLogin() bằng cách khác (Enter, script...).
