@@ -1121,7 +1121,7 @@ const FB_PATH = 'honghha_tamworm'; // node gốc trên Firebase
 // QUAN TRỌNG: mỗi lần cập nhật file index.html mới lên Netlify, PHẢI tăng số
 // này lên (ví dụ: 2026061801 -> 2026061802). Format gợi ý: YYYYMMDDxx.
 // Không tăng số này thì cơ chế chặn bản cũ sẽ không hoạt động.
-const APP_VERSION = 2026062702;
+const APP_VERSION = 2026062703;
 const FB_VERSION_PATH = 'honghha_app_version'; // node riêng lưu version mới nhất
 
 // Đăng nhập ẩn danh để đáp ứng security rules "auth != null"
@@ -1177,6 +1177,9 @@ function buildIndexes(){
 }
 // Sửa lại "Số hộp chuẩn" cho các lô cũ: boxes phải = eggs × 4 (không nhân tỉ lệ dồn cũ)
 let _migratedBatchBoxes = false;
+// Cờ đánh dấu: có thay đổi từ migrate đang chờ lưu, sẽ lưu ngay sau khi dữ
+// liệu server được xác nhận an toàn (xem trong startFirebaseSync).
+let _pendingMigrationSave = false;
 function migrateBatchBoxes(){
   if(_migratedBatchBoxes) return;
   let changed=false;
@@ -1191,7 +1194,13 @@ function migrateBatchBoxes(){
     if(b.rateDL===undefined)  b.rateDL  = b.rate || 0.75;
   });
   _migratedBatchBoxes = true;
-  if(changed) setTimeout(()=>saveDB(), 500); // lưu lại sau khi migrate
+  // QUAN TRỌNG: TUYỆT ĐỐI không tự lưu lên Firebase ngay ở đây. Hàm này chạy
+  // ngay khi app khởi động, dùng dữ liệu localStorage CŨ (có thể lỗi thời).
+  // Nếu lưu ngay, có nguy cơ ghi đè dữ liệu mới hơn thật trên server trước
+  // khi Firebase kịp trả dữ liệu mới về (race condition đã từng gây mất dữ
+  // liệu thật). Việc lưu lại sau khi sửa "Số hộp chuẩn" sẽ được thực hiện ở
+  // nơi khác, CHỈ sau khi đã xác nhận _dataSafeToUse === true.
+  if(changed) _pendingMigrationSave = true;
 }
 function getCustFast(id){return _custMap[id]||{name:'?',code:'?',phone:'',cccd:''};}
 function getTxFast(cId,lc){return _txMap[cId+'_'+lc]||null;}
@@ -1379,6 +1388,14 @@ function startFirebaseSync(){
       if(!_fbReady){
         _fbReady = true;
         showSyncStatus('✓ Firebase đã kết nối', '#0a5c46');
+      }
+      // Nếu buildIndexes() vừa phát hiện cần sửa lại "Số hộp chuẩn" theo công
+      // thức mới (migrate), CHỈ lưu lên server tại đây — sau khi đã chắc chắn
+      // _dataSafeToUse=true và DB đang là dữ liệu THẬT mới nhất từ server,
+      // không phải dữ liệu cục bộ cũ có thể lỗi thời.
+      if(_pendingMigrationSave){
+        _pendingMigrationSave = false;
+        saveDB();
       }
       // Chỉ mở form đăng nhập nếu chưa có người đăng nhập (tránh ghi đè giao
       // diện khi đang dùng app, vì hàm này còn được gọi lại mỗi khi server
