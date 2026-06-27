@@ -237,6 +237,19 @@ tr:hover td{background:#fafafa;}
     <div class="login-err" id="login-err">Sai tên đăng nhập hoặc mật khẩu!</div>
     </div><!-- /login-form-wrap -->
 
+    <!-- Chỉ hiện khi Firebase xác nhận không đọc được dữ liệu — yêu cầu xác
+         nhận thủ công của con người trước khi ghi dữ liệu mẫu lên server,
+         tuyệt đối không tự động suy luận. -->
+    <div id="manual-init-wrap" style="display:none;text-align:center;margin-top:6px;">
+      <div style="font-size:12px;color:#888;margin-bottom:10px;">
+        Chỉ bấm nút này nếu bạn CHẮC CHẮN đây là máy chủ Firebase mới, chưa từng có dữ liệu.
+        Nếu không chắc, hãy kiểm tra lại Firebase Console trước.
+      </div>
+      <button onclick="manualInitFromLocal()" style="background:#fff;border:2px solid #c0392b;color:#c0392b;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">
+        ⚠ Tôi xác nhận: khởi tạo dữ liệu mẫu lên máy chủ
+      </button>
+    </div>
+
   </div>
 </div>
 
@@ -1213,12 +1226,14 @@ function showSyncStatus(msg, color){
 }
 
 // Lắng nghe thay đổi từ Firebase realtime
-function showLoginForm(msg, blocked){
+function showLoginForm(msg, blocked, showManualInit){
   // Ẩn loading, hiện form đăng nhập
   const loading = document.getElementById('fb-loading');
   const form    = document.getElementById('login-form-wrap');
+  const initWrap= document.getElementById('manual-init-wrap');
   if(loading) loading.style.display = 'none';
   if(form)    form.style.display    = 'block';
+  if(initWrap) initWrap.style.display = showManualInit ? 'block' : 'none';
   // Khoá nút đăng nhập nếu dữ liệu chưa được xác nhận an toàn (chưa chắc đã
   // đồng bộ với server) — tránh người dùng đăng nhập rồi sửa dữ liệu cũ,
   // sau đó ghi đè lên dữ liệu mới hơn thực sự đang có trên server.
@@ -1238,6 +1253,16 @@ function showLoginForm(msg, blocked){
     const msgEl = document.getElementById('fb-loading-msg');
     if(msgEl){ msgEl.textContent = msg; msgEl.style.color = blocked ? '#c0392b' : '#e67e22'; loading.style.display='block'; }
   }
+}
+
+// Chỉ chạy khi CON NGƯỜI xác nhận thủ công bằng cách bấm nút — tuyệt đối
+// không tự động gọi hàm này từ logic suy luận.
+function manualInitFromLocal(){
+  if(!confirm('XÁC NHẬN LẦN CUỐI: Bạn chắc chắn Firebase chưa từng có dữ liệu và muốn ghi dữ liệu mẫu/cục bộ lên máy chủ? Hành động này có thể KHÔNG THỂ HOÀN TÁC nếu server đang có dữ liệu thật.')) return;
+  showSyncStatus('⏳ Đang khởi tạo dữ liệu lên máy chủ...', '#e67e22');
+  saveToDB_Firebase();
+  _dataSafeToUse = true;
+  showLoginForm(null, false, false);
 }
 
 function startFirebaseSync(){
@@ -1285,30 +1310,25 @@ function startFirebaseSync(){
       return;
     }
 
-    // data rỗng hoặc thiếu field bắt buộc — KHÔNG suy luận là "server trống"
-    // và KHÔNG cho đăng nhập, vì có thể chỉ là lỗi đọc/mạng tạm thời.
+    // data rỗng hoặc thiếu field bắt buộc — TUYỆT ĐỐI KHÔNG tự suy luận
+    // "server trống nên ghi dữ liệu mẫu/cục bộ lên". Một cờ lưu trong
+    // localStorage để nhớ "máy này đã từng thấy server có dữ liệu" là KHÔNG
+    // ĐÁNG TIN CẬY — nó gắn với từng máy/trình duyệt cụ thể, không phản ánh
+    // trạng thái thật của server. Trên máy mới, hoặc sau khi xoá cache, cờ đó
+    // luôn vắng mặt dù server vẫn đang chứa dữ liệu thật đầy đủ — dẫn đến nguy
+    // cơ ghi dữ liệu mẫu/cũ đè lên dữ liệu thật. Vì vậy: bất kể lý do gì,
+    // nếu không nhận được dữ liệu hợp lệ từ server, KHÔNG đăng nhập, KHÔNG
+    // ghi gì lên Firebase tự động — chỉ dừng lại và yêu cầu người dùng xác
+    // nhận thủ công.
     if(!_fbReady){
       clearTimeout(fbTimeout);
       _fbReady = true;
-      const neverInitialized = !localStorage.getItem(DB_KEY + '_server_seen');
-      if(neverInitialized){
-        // Trường hợp duy nhất hợp lệ để khởi tạo từ local: server CHƯA TỪNG
-        // có dữ liệu (lần setup đầu tiên của cả hệ thống).
-        console.warn('Firebase chưa có dữ liệu lần nào — khởi tạo từ dữ liệu cục bộ.');
-        showSyncStatus('⏳ Đang khởi tạo dữ liệu lần đầu lên máy chủ...', '#e67e22');
-        saveToDB_Firebase();
-        _dataSafeToUse = true;
-        if(!currentUser) showLoginForm(null, false);
-      } else {
-        // Đã từng thấy dữ liệu server trước đây nhưng giờ trống/lỗi đọc
-        // → KHÔNG cho đăng nhập, cảnh báo rõ và yêu cầu kiểm tra/tải lại.
-        console.error('Firebase trả về dữ liệu rỗng dù trước đó đã có dữ liệu. Chặn đăng nhập để tránh mất dữ liệu.');
-        showSyncStatus('⚠ Không đọc được dữ liệu máy chủ!', '#e74c3c');
-        _dataSafeToUse = false;
-        if(!currentUser) showLoginForm('⚠ Không tải được dữ liệu mới nhất từ máy chủ. Vui lòng tải lại trang (F5) trước khi đăng nhập, để tránh ghi đè mất dữ liệu.', true);
-      }
+      console.error('Firebase không trả về dữ liệu hợp lệ. Chặn đăng nhập để tránh mất hoặc ghi đè dữ liệu.');
+      showSyncStatus('⚠ Không đọc được dữ liệu máy chủ!', '#e74c3c');
+      _dataSafeToUse = false;
+      if(!currentUser) showLoginForm('⚠ Không tải được dữ liệu từ máy chủ (có thể do lỗi mạng, hoặc đây là lần khởi tạo đầu tiên). Vui lòng kiểm tra Firebase Console hoặc liên hệ người quản trị trước khi tiếp tục, để tránh ghi đè mất dữ liệu.', true, true);
     } else if(!_dataSafeToUse && !currentUser){
-      showLoginForm('⚠ Không tải được dữ liệu mới nhất từ máy chủ. Vui lòng tải lại trang (F5) trước khi đăng nhập.', true);
+      showLoginForm('⚠ Không tải được dữ liệu mới nhất từ máy chủ. Vui lòng tải lại trang (F5) trước khi đăng nhập.', true, true);
     }
   }, err => {
     clearTimeout(fbTimeout);
@@ -1343,10 +1363,15 @@ function retryFirebaseSave(){
 function saveToDB_Firebase(){
   if(_fbSyncing) return;
   _fbSyncing = true;
-  // Dùng timestamp của SERVER Firebase (không phải đồng hồ máy khách) để tránh
-  // trường hợp máy bị lệch giờ ghi đè nhầm lên dữ liệu mới hơn của người khác.
-  DB._fbVer = firebase.database.ServerValue.TIMESTAMP;
-  fbDB.ref(FB_PATH).set(DB)
+  // QUAN TRỌNG: không gán placeholder ServerValue.TIMESTAMP trực tiếp vào DB
+  // đang dùng trong bộ nhớ — object đặc biệt này ({".sv":"timestamp"}) chỉ có
+  // nghĩa khi Firebase nhận và dịch nó lúc ghi. Nếu gán vào DB.local, các lần
+  // đọc/so sánh/serialize tiếp theo trong cùng phiên sẽ thấy giá trị rác.
+  // Giải pháp: gửi một bản sao có placeholder, còn DB trong bộ nhớ giữ
+  // timestamp số bình thường (Date.now() chỉ dùng để hiển thị/so sánh cục bộ,
+  // không dùng để quyết định ai mới hơn ai giữa các máy khác nhau).
+  const payload = Object.assign({}, DB, { _fbVer: firebase.database.ServerValue.TIMESTAMP });
+  fbDB.ref(FB_PATH).set(payload)
     .then(()=>{
       _fbSyncing = false;
       _unsavedCount = 0;
